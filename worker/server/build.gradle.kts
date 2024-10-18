@@ -6,6 +6,7 @@ dependencies{
     implementation(project(":worker:core"))
 
     implementation(libs.slf4j)
+    implementation(libs.netty)
 
     testImplementation(libs.jupiter)
     testRuntimeOnly(libs.junitPlatform)

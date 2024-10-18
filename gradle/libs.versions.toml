@@ -2,9 +2,11 @@
 jupiter = '5.11.2'
 lombok = '1.18.34'
 slf4j = '2.0.16'
+netty = '4.1.114.Final'
 
 [libraries]
 jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jupiter" }
 junitPlatform = { module = "org.junit.platform:junit-platform-launcher" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 slf4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }
+netty = { module = "io.netty:netty-all", version.ref = "netty" }

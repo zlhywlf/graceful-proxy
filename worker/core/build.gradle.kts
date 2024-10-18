@@ -3,7 +3,8 @@ plugins {
 }
 
 dependencies{
-    implementation(libs.slf4j)
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
     testImplementation(libs.jupiter)
     testRuntimeOnly(libs.junitPlatform)
