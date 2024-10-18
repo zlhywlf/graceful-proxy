@@ -1,2 +1,2 @@
 includeBuild("worker/buildConfig")
-include("worker:core")
+include("worker:core","worker:server")
