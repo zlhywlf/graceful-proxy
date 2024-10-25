@@ -2,11 +2,12 @@ plugins {
     id("proxy.application")
 }
 
-dependencies{
+dependencies {
     implementation(project(":worker:core"))
 
     implementation(libs.slf4j)
     implementation(libs.netty)
+    implementation(libs.commonsLang3)
 
     testImplementation(libs.jupiter)
     testRuntimeOnly(libs.junitPlatform)
