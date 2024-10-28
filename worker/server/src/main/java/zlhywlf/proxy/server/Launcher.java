@@ -11,6 +11,6 @@ public class Launcher {
     public static void main(String[] args) {
         logger.info("Running with args: {}", Arrays.asList(args));
         final int port = 8080;
-        new ProxyBootstrap().bind(port).start();
+        new ProxyBootstrap().group(new ProxyThreadPoolGroup()).bind(port).start();
     }
 }

@@ -9,6 +9,9 @@ dependencies {
     implementation(libs.netty)
     implementation(libs.commonsLang3)
 
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
+
     testImplementation(libs.jupiter)
     testRuntimeOnly(libs.junitPlatform)
 }
