@@ -2,10 +2,9 @@ package zlhywlf.proxy.server;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.socket.SocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.server.adapters.InitializeAdapter;
+import zlhywlf.proxy.server.adapters.ClientToProxyAdapter;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -45,7 +44,7 @@ public class ProxyBootstrap {
             .group(group.getBossGroup(), group.getWorkerGroup())
             .channel(group.getChannelClazz())
             .option(ChannelOption.SO_BACKLOG, 1024)
-            .childHandler(new InitializeAdapter<SocketChannel>())
+            .childHandler(new ClientToProxyAdapter(group))
             .bind(localAddress).addListener((ChannelFutureListener) f -> {
                 if (f.isSuccess()) group.registerChannel(f.channel());
             })

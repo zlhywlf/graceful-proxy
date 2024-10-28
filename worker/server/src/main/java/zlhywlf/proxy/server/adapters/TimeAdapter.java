@@ -19,7 +19,7 @@ public class TimeAdapter extends ChannelInboundHandlerAdapter {
         ByteBuf buf = (ByteBuf) msg;
         byte[] bytes = new byte[buf.readableBytes()];
         buf.readBytes(bytes);
-        logger.info("receive : {}", new String(bytes));
+        logger.info("receive : {}{}", new String(bytes), this);
         ByteBuf res = Unpooled.copiedBuffer((new Date(System.currentTimeMillis()) + "\n").getBytes());
         ctx.writeAndFlush(res);
     }
