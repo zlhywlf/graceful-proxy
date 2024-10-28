@@ -17,9 +17,12 @@ public class ProxyBootstrap {
     private ProxyThreadPoolGroup group;
 
     public void start() {
-        validate();
-        doStart();
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "graceful-proxy-stop"));
+        if (!group.isStopped()) {
+            validate();
+            doStart();
+            return;
+        }
+        throw new IllegalStateException("Attempted to start proxy, but proxy's server group is already stopped");
     }
 
     public ProxyBootstrap bind(int port) {
@@ -43,20 +46,21 @@ public class ProxyBootstrap {
             .channel(group.getChannelClazz())
             .option(ChannelOption.SO_BACKLOG, 1024)
             .childHandler(new InitializeAdapter<SocketChannel>())
-            .bind(localAddress)
+            .bind(localAddress).addListener((ChannelFutureListener) f -> {
+                if (f.isSuccess()) group.registerChannel(f.channel());
+            })
             .awaitUninterruptibly();
         Throwable cause = cf.cause();
         if (cause != null) {
-            stop();
+            abort();
             throw new RuntimeException(cause);
         }
+        Runtime.getRuntime().addShutdownHook(group.getJvmShutdownHook());
         logger.info("Proxy started at address: {}", cf.channel().localAddress());
     }
 
-    public void stop() {
-        logger.info("About to shutdown");
-        group.getBossGroup().shutdownGracefully();
-        group.getWorkerGroup().shutdownGracefully();
+    public void abort() {
+        group.doStop(false);
     }
 
     public ProxyBootstrap group(ProxyThreadPoolGroup group) {
