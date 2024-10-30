@@ -12,6 +12,8 @@ dependencies {
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
 
+    testImplementation(libs.httpclient)
+    testImplementation(libs.jetty)
     testImplementation(libs.jupiter)
     testRuntimeOnly(libs.junitPlatform)
 }

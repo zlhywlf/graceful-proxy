@@ -4,6 +4,8 @@ lombok = '1.18.34'
 slf4j = '2.0.16'
 netty = '4.1.114.Final'
 commonsLang3 = '3.17.0'
+httpclient = '5.4.1'
+jetty = '12.0.14'
 
 [libraries]
 jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "jupiter" }
@@ -12,3 +14,5 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 slf4j = { module = "org.slf4j:slf4j-reload4j", version.ref = "slf4j" }
 netty = { module = "io.netty:netty-all", version.ref = "netty" }
 commonsLang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
+httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version.ref = "httpclient" }
+jetty = { module = "org.eclipse.jetty:jetty-server", version.ref = "jetty" }
