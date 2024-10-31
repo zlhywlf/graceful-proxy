@@ -7,7 +7,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
 import org.junit.jupiter.api.Test;
-import zlhywlf.proxy.server.adapters.ProxyAdapter;
+import zlhywlf.proxy.server.adapters.ProxyServerAdapter;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 public class TimeAdapterTest {
     @Test
     void testSuccess() {
-        ProxyAdapter adapter = new ProxyAdapter();
+        ProxyServerAdapter adapter = new ProxyServerAdapter();
         EmbeddedChannel channel = new EmbeddedChannel(
             new HttpServerCodec(),
             adapter);

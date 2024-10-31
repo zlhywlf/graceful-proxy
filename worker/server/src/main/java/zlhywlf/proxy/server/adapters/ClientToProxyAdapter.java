@@ -1,30 +1,23 @@
 package zlhywlf.proxy.server.adapters;
 
 import io.netty.channel.*;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpServerCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.server.ProxyServer;
 
-public class ClientToProxyAdapter extends ChannelInitializer<Channel> {
+public class ClientToProxyAdapter extends ProxyServerAdapter<HttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    private final ProxyServer group;
-    private final ChannelHandler proxyAdapter = new ProxyAdapter();
-    private final ChannelHandler bytesReadAdapter = new BytesReadAdapter();
-    private final ChannelHandler bytesWrittenAdapter = new BytesWrittenAdapter();
+    private final ProxyServer server;
 
-    public ClientToProxyAdapter(ProxyServer group) {
-        this.group = group;
-    }
-
-    @Override
-    protected void initChannel(Channel channel) throws Exception {
+    public ClientToProxyAdapter(ProxyServer server, ChannelPipeline pipeline) {
+        this.server = server;
         logger.info("Initialization channel pipeline{}", this);
-        ChannelPipeline pipeline = channel.pipeline();
-        pipeline.addLast("bytesReadAdapter", bytesReadAdapter);
-        pipeline.addLast("bytesWrittenAdapter", bytesWrittenAdapter);
+        pipeline.addLast("bytesReadAdapter", new BytesReadAdapter());
+        pipeline.addLast("bytesWrittenAdapter", new BytesWrittenAdapter());
         pipeline.addLast("httpServerCodec", new HttpServerCodec());
-        pipeline.addLast("proxyAdapter", proxyAdapter);
+        pipeline.addLast("proxyAdapter", this);
     }
 }

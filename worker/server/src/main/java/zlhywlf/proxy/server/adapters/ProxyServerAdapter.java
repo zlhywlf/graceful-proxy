@@ -2,10 +2,7 @@ package zlhywlf.proxy.server.adapters;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,11 +17,11 @@ import static io.netty.handler.codec.http.HttpHeaderValues.TEXT_PLAIN;
 import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
 
 @ChannelHandler.Sharable
-public class ProxyAdapter extends SimpleChannelInboundHandler<Object> {
-    private static final Logger logger = LoggerFactory.getLogger(ProxyAdapter.class);
+public class ProxyServerAdapter<I extends HttpObject> extends SimpleChannelInboundHandler<I> {
+    private static final Logger logger = LoggerFactory.getLogger(ProxyServerAdapter.class);
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
+    protected void channelRead0(ChannelHandlerContext ctx, I msg) throws Exception {
         logger.info("Reading: {}", msg);
         if (msg instanceof HttpRequest req) {
             boolean keepAlive = HttpUtil.isKeepAlive(req);

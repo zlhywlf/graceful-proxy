@@ -94,7 +94,12 @@ public class ProxyServer {
                     .group(context.getProxyThreadPoolGroup().getBossPool(), context.getProxyThreadPoolGroup().getClientToProxyPool())
                     .channel((Class<? extends ServerChannel>) channelClazz)
                     .option(ChannelOption.SO_BACKLOG, 1024)
-                    .childHandler(new ClientToProxyAdapter(this))
+                    .childHandler(new ChannelInitializer<>() {
+                        @Override
+                        protected void initChannel(Channel channel) {
+                            new ClientToProxyAdapter(ProxyServer.this, channel.pipeline());
+                        }
+                    })
                     .bind(context.getRequestedAddress()).addListener((ChannelFutureListener) f -> {
                         if (f.isSuccess()) registerChannel(f.channel());
                     })
