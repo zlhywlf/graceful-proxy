@@ -4,17 +4,17 @@ import io.netty.channel.*;
 import io.netty.handler.codec.http.HttpServerCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.server.ProxyThreadPoolGroup;
+import zlhywlf.proxy.server.ProxyServer;
 
 public class ClientToProxyAdapter extends ChannelInitializer<Channel> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    private final ProxyThreadPoolGroup group;
+    private final ProxyServer group;
     private final ChannelHandler proxyAdapter = new ProxyAdapter();
     private final ChannelHandler bytesReadAdapter = new BytesReadAdapter();
     private final ChannelHandler bytesWrittenAdapter = new BytesWrittenAdapter();
 
-    public ClientToProxyAdapter(ProxyThreadPoolGroup group) {
+    public ClientToProxyAdapter(ProxyServer group) {
         this.group = group;
     }
 

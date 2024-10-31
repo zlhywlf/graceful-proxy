@@ -1,20 +1,26 @@
 package zlhywlf.proxy.server;
 
+import lombok.Getter;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.server.config.ProxyConfig;
+import zlhywlf.proxy.server.config.ProxyThreadPoolConfig;
 
 import java.lang.reflect.RecordComponent;
-import java.util.Arrays;
+import java.net.InetSocketAddress;
 import java.util.Objects;
 
+@Getter
 public class ProxyBootstrap {
     private static final Logger logger = LoggerFactory.getLogger(ProxyBootstrap.class);
 
     public static final Option helpOption = new Option("h", "help", false, "display command line help.");
+    public static final Option notAllowLocalOnlyOption = new Option(null, "notAllowLocalOnly", false, "not binding only to localhost.");
     public static final Options options = new Options() {{
         this.addOption(helpOption);
+        this.addOption(notAllowLocalOnlyOption);
         this.addOption(Option
             .builder("n")
             .longOpt("name")
@@ -47,15 +53,20 @@ public class ProxyBootstrap {
     }};
 
     private final CommandLine cmd;
-
+    private ProxyThreadPoolGroup proxyThreadPoolGroup;
+    private InetSocketAddress requestedAddress;
+    private boolean allowLocalOnly = true;
 
     public ProxyBootstrap(String[] args) {
-        logger.info("Running with args: {}", Arrays.asList(args));
         try {
             cmd = new DefaultParser().parse(options, args);
         } catch (ParseException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public ProxyBootstrap(CommandLine cmd) {
+        this.cmd = cmd;
     }
 
     public void start() {
@@ -64,7 +75,7 @@ public class ProxyBootstrap {
             helpFormatter.printHelp("gracefulProxy", options);
             return;
         }
-        new ProxyThreadPoolGroup(createProxyConfig()).start();
+        doStart();
     }
 
     public ProxyConfig createProxyConfig() {
@@ -79,6 +90,44 @@ public class ProxyBootstrap {
             return ConstructorUtils.invokeConstructor(ProxyConfig.class, paramValues);
         } catch (Throwable e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public ProxyBootstrap withProxyThreadPoolGroup(ProxyThreadPoolGroup proxyThreadPoolGroup) {
+        this.proxyThreadPoolGroup = proxyThreadPoolGroup;
+        return this;
+    }
+
+    public ProxyBootstrap withRequestedAddress(InetSocketAddress requestedAddress) {
+        this.requestedAddress = requestedAddress;
+        return this;
+    }
+
+    public ProxyBootstrap withAllowLocalOnly(boolean allowLocalOnly) {
+        this.allowLocalOnly = allowLocalOnly;
+        return this;
+    }
+
+    private void doStart() {
+        ProxyConfig proxyConfig = createProxyConfig();
+        ProxyThreadPoolGroup proxyThreadPoolGroup = Objects.requireNonNullElseGet(this.proxyThreadPoolGroup, () -> {
+            ProxyThreadPoolConfig proxyThreadPoolConfig = new ProxyThreadPoolConfig();
+            proxyThreadPoolConfig.setName(proxyConfig.name());
+            proxyThreadPoolConfig.setEventLoopClazzByName(proxyConfig.eventLoopClass());
+            return new ProxyThreadPoolGroup(proxyThreadPoolConfig);
+        });
+        new ProxyServer(new ProxyContext(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig))).start();
+    }
+
+    private InetSocketAddress determineListenAddress(ProxyConfig proxyConfig) {
+        if (requestedAddress != null) {
+            return requestedAddress;
+        } else {
+            if (allowLocalOnly) {
+                return new InetSocketAddress("127.0.0.1", proxyConfig.port());
+            } else {
+                return new InetSocketAddress(proxyConfig.port());
+            }
         }
     }
 }

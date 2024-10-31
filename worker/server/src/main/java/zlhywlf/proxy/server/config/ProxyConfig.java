@@ -1,4 +1,4 @@
-package zlhywlf.proxy.server;
+package zlhywlf.proxy.server.config;
 
 public record ProxyConfig(
     String name,
