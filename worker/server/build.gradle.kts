@@ -8,6 +8,7 @@ dependencies {
     implementation(libs.slf4j)
     implementation(libs.netty)
     implementation(libs.commonsLang3)
+    implementation(libs.cli)
 
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

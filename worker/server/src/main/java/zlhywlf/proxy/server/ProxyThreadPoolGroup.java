@@ -1,22 +1,20 @@
 package zlhywlf.proxy.server;
 
-import io.netty.channel.Channel;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.ServerChannel;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.ChannelGroupFuture;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import io.netty.util.internal.PlatformDependent;
-import io.netty.util.internal.SystemPropertyUtil;
 import lombok.Getter;
 import org.apache.commons.lang3.ClassUtils;
-import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.server.adapters.ClientToProxyAdapter;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.List;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,37 +24,16 @@ public class ProxyThreadPoolGroup {
     private static final Logger logger = LoggerFactory.getLogger(ProxyThreadPoolGroup.class);
     private static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(0);
 
-    private final EventLoopGroup bossGroup;
-    private final EventLoopGroup workerGroup;
-    private final Class<? extends ServerChannel> channelClazz;
+    private final ProxyContext context;
+    private final ProxyThreadPool proxyThreadPool;
     private final ChannelGroup channels = new DefaultChannelGroup("server group", GlobalEventExecutor.INSTANCE);
-    private final int proxyThreadPoolGroupId;
-    private final String name;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     private final Thread jvmShutdownHook = new Thread(this::stop, "graceful-proxy-stop-hook");
+    private volatile SocketAddress boundAddress;
 
-    @SuppressWarnings("unchecked")
-    public ProxyThreadPoolGroup() {
-        proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
-        name = SystemPropertyUtil.get("proxy.name", "GracefulProxy");
-        String eventLoopClassName = SystemPropertyUtil.get("proxy.eventLoopClass", "io.netty.channel.nio.NioEventLoopGroup");
-        String channelClassName = SystemPropertyUtil.get("proxy.channelClass", "io.netty.channel.socket.nio.NioServerSocketChannel");
-        try {
-            Class<?> eventLoopClazz = ClassUtils.getClass(PlatformDependent.getSystemClassLoader(), eventLoopClassName, false);
-            Class<?> channelClazz = ClassUtils.getClass(PlatformDependent.getSystemClassLoader(), channelClassName, false);
-            if (!ClassUtils.isAssignable(eventLoopClazz, EventLoopGroup.class)) {
-                throw new IllegalArgumentException("proxy.eventLoopClass");
-            }
-            bossGroup = (EventLoopGroup) ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory(eventLoopClazz, proxyThreadPoolGroupId, name, "boss"));
-            workerGroup = (EventLoopGroup) ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory(eventLoopClazz, proxyThreadPoolGroupId, name, "worker"));
-            if (!ClassUtils.isAssignable(channelClazz, ServerChannel.class)) {
-                throw new IllegalArgumentException("proxy.channelClass");
-            }
-            this.channelClazz = (Class<? extends ServerChannel>) channelClazz;
-        } catch (ClassNotFoundException | InvocationTargetException | NoSuchMethodException | IllegalAccessException |
-                 InstantiationException e) {
-            throw new RuntimeException(e);
-        }
+    public ProxyThreadPoolGroup(ProxyConfig proxyConfig) {
+        context = new ProxyContext(this, proxyThreadPoolGroupCount.getAndIncrement(), proxyConfig, new InetSocketAddress(proxyConfig.port()));
+        proxyThreadPool = new ProxyThreadPool(context);
     }
 
     public void registerChannel(Channel channel) {
@@ -87,32 +64,12 @@ public class ProxyThreadPoolGroup {
         }
     }
 
-    public void closePools(boolean graceful) {
-        List<EventLoopGroup> pools = List.of(bossGroup, workerGroup);
-        pools.forEach(pool -> {
-            if (graceful) {
-                pool.shutdownGracefully();
-                return;
-            }
-            pool.shutdownGracefully(0L, 0L, TimeUnit.SECONDS);
-        });
-        if (graceful) {
-            pools.forEach(pool -> {
-                try {
-                    pool.awaitTermination(60L, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    logger.warn("Interrupted while shutting down event loop");
-                }
-            });
-        }
-    }
 
     public void doStop(boolean graceful) {
         if (stopped.compareAndSet(false, true)) {
             logger.info("Shutting down proxy server {}", graceful ? "(graceful)" : "(non-graceful)");
             closeChannels(graceful);
-            closePools(graceful);
+            proxyThreadPool.close(graceful);
             try {
                 Runtime.getRuntime().removeShutdownHook(jvmShutdownHook);
             } catch (IllegalStateException ignore) {
@@ -125,6 +82,43 @@ public class ProxyThreadPoolGroup {
 
     public void stop() {
         doStop(true);
+    }
+
+    public void abort() {
+        doStop(false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public void start() {
+        if (!isStopped()) {
+            try {
+                Class<?> channelClazz = ClassUtils.getClass(PlatformDependent.getSystemClassLoader(), context.getProxyConfig().channelClass(), false);
+                if (!ClassUtils.isAssignable(channelClazz, ServerChannel.class)) {
+                    throw new IllegalArgumentException("channelClass");
+                }
+                ChannelFuture cf = new ServerBootstrap()
+                    .group(proxyThreadPool.getBossPool(), proxyThreadPool.getClientToProxyPool())
+                    .channel((Class<? extends ServerChannel>) channelClazz)
+                    .option(ChannelOption.SO_BACKLOG, 1024)
+                    .childHandler(new ClientToProxyAdapter(this))
+                    .bind(context.getRequestedAddress()).addListener((ChannelFutureListener) f -> {
+                        if (f.isSuccess()) registerChannel(f.channel());
+                    })
+                    .awaitUninterruptibly();
+                Throwable cause = cf.cause();
+                if (cause != null) {
+                    abort();
+                    throw new RuntimeException(cause);
+                }
+                Runtime.getRuntime().addShutdownHook(getJvmShutdownHook());
+                boundAddress = cf.channel().localAddress();
+                logger.info("Proxy started at address: {}", boundAddress);
+                return;
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        throw new IllegalStateException("Attempted to start proxy, but proxy's server group is already stopped");
     }
 
     public boolean isStopped() {
