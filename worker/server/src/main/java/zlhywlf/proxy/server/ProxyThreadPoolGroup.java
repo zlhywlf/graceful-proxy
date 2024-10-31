@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.server.config.ProxyThreadPoolConfig;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +24,8 @@ public class ProxyThreadPoolGroup {
     private final EventLoopGroup clientToProxyPool;
     private final EventLoopGroup proxyToServerPool;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
+    private final List<ProxyServer> registeredServers = new ArrayList<>(1);
+    private final Object SERVER_REGISTRATION_LOCK = new Object();
 
     public ProxyThreadPoolGroup(ProxyThreadPoolConfig config) {
         proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
@@ -37,7 +40,7 @@ public class ProxyThreadPoolGroup {
         }
     }
 
-    public void close(boolean graceful) {
+    private void close(boolean graceful) {
         if (!stopped.compareAndSet(false, true)) {
             logger.info("Shutdown requested, but thread pool group is already stopped. Doing nothing.");
             return;
@@ -61,5 +64,26 @@ public class ProxyThreadPoolGroup {
             });
         }
         logger.info("Done shutting down thread pool group");
+    }
+
+    public void registerProxyServer(ProxyServer proxyServer) {
+        synchronized (SERVER_REGISTRATION_LOCK) {
+            registeredServers.add(proxyServer);
+        }
+    }
+
+    public void unregisterProxyServer(ProxyServer proxyServer, boolean graceful) {
+        synchronized (SERVER_REGISTRATION_LOCK) {
+            boolean wasRegistered = registeredServers.remove(proxyServer);
+            if (!wasRegistered) {
+                logger.warn("Attempted to unregister proxy server from thread pool group that it was not registered with. Was the proxy unregistered twice?");
+            }
+            if (registeredServers.isEmpty()) {
+                logger.info("Proxy server unregistered from thread pool group. No proxy servers remain registered, so shutting down thread pool group.");
+                close(graceful);
+            } else {
+                logger.info("Proxy server unregistered from thread pool group. Not shutting down thread pool group ({} proxy servers remain registered).", registeredServers.size());
+            }
+        }
     }
 }
