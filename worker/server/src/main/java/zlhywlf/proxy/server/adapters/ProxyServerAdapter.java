@@ -1,45 +1,57 @@
 package zlhywlf.proxy.server.adapters;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
+import io.netty.util.ReferenceCountUtil;
+import io.netty.util.internal.TypeParameterMatcher;
+import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.server.ProxyServer;
+import zlhywlf.proxy.server.ProxyState;
 
-import java.util.Date;
-
-import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
-import static io.netty.handler.codec.http.HttpHeaderValues.TEXT_PLAIN;
-import static io.netty.handler.codec.http.HttpHeaderValues.CLOSE;
-
-@ChannelHandler.Sharable
-public class ProxyServerAdapter<I extends HttpObject> extends SimpleChannelInboundHandler<I> {
+public abstract class ProxyServerAdapter<T extends HttpObject> extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ProxyServerAdapter.class);
 
+    private final ProxyServer server;
+    private volatile ProxyState currentState;
+    private final TypeParameterMatcher matcher;
+
+    public ProxyServerAdapter(ProxyServer server, ProxyState state) {
+        this.server = server;
+        this.matcher = TypeParameterMatcher.find(this, ProxyServerAdapter.class, "T");
+        become(state);
+    }
+
+    @SuppressWarnings("unchecked")
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, I msg) throws Exception {
-        logger.info("Reading: {}", msg);
-        if (msg instanceof HttpRequest req) {
-            boolean keepAlive = HttpUtil.isKeepAlive(req);
-            FullHttpResponse response = new DefaultFullHttpResponse(req.protocolVersion(), OK, Unpooled.copiedBuffer((new Date(System.currentTimeMillis()) + "\n").getBytes()));
-            response.headers().set(CONTENT_TYPE, TEXT_PLAIN).setInt(CONTENT_LENGTH, response.content().readableBytes());
-            if (keepAlive) {
-                if (!req.protocolVersion().isKeepAliveDefault()) {
-                    response.headers().set(CONNECTION, KEEP_ALIVE);
-                }
-            } else {
-                response.headers().set(CONNECTION, CLOSE);
+    public void channelRead(@NonNull ChannelHandlerContext ctx, @NonNull Object msg) throws Exception {
+        try {
+            if (!this.matcher.match(msg)) {
+                throw new UnsupportedOperationException("Unsupported message type: " + msg.getClass().getName());
             }
-            ChannelFuture f = ctx.writeAndFlush(response);
-            if (!keepAlive) {
-                f.addListener(ChannelFutureListener.CLOSE);
-            }
+            channelRead0((T) msg);
+        } finally {
+            ReferenceCountUtil.release(msg);
         }
     }
+
+    protected void channelRead0(T msg) {
+        logger.info("Reading: {}", msg);
+        ProxyState nextState = currentState;
+        switch (currentState) {
+            case AWAITING_INITIAL:
+                if (msg instanceof HttpMessage) {
+                    nextState = readHttpInitial(msg);
+                    break;
+                }
+                logger.info("Dropping message because HTTP object was not an HttpMessage. HTTP object may be orphaned content from a short-circuited response. Message: {}", msg);
+                break;
+        }
+        become(nextState);
+    }
+
+    public abstract ProxyState readHttpInitial(T msg);
 
     @Override
     public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
@@ -74,5 +86,9 @@ public class ProxyServerAdapter<I extends HttpObject> extends SimpleChannelInbou
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         super.userEventTriggered(ctx, evt);
+    }
+
+    public void become(ProxyState state) {
+        currentState = state;
     }
 }

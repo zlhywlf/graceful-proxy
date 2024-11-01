@@ -18,6 +18,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.server.ProxyBootstrap;
+import zlhywlf.proxy.server.ProxyServer;
 import zlhywlf.proxy.server.adapter.models.ResponseInfo;
 
 import java.io.IOException;
@@ -31,9 +33,11 @@ public class SimpleProxyTest {
     static Server webServer;
     static int webServerPort;
     static HttpHost webHost;
+    static ProxyServer proxyServer;
 
     @BeforeAll
     static void init() {
+        proxyServer = new ProxyBootstrap(new String[]{"-p=0"}).start();
         httpClientSimple = buildHttpClient(false);
         httpClientProxy = buildHttpClient(true);
         webServer = createWebServer();
@@ -50,6 +54,7 @@ public class SimpleProxyTest {
         try {
             httpClientSimple.close();
             httpClientProxy.close();
+            proxyServer.stop();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -61,7 +66,7 @@ public class SimpleProxyTest {
     }
 
     void compareProxiedAndNoProxiedGet(HttpHost host, String resourceUrl) {
-        ResponseInfo noProxied = httpGet(host, resourceUrl, false);
+        ResponseInfo noProxied = httpGet(host, resourceUrl, true);
         logger.info(noProxied.toString());
     }
 
@@ -87,7 +92,7 @@ public class SimpleProxyTest {
             .custom()
             .setConnectionManager(cm);
         if (isProxied) {
-            HttpHost proxy = new HttpHost("localhost", 8080);
+            HttpHost proxy = new HttpHost("localhost", proxyServer.getBoundAddress().getPort());
             builder.setProxy(proxy);
         }
         return builder.build();

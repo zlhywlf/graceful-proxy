@@ -8,12 +8,15 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import io.netty.util.internal.PlatformDependent;
 import lombok.Getter;
+import lombok.NonNull;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.server.adapters.BytesReadAdapter;
+import zlhywlf.proxy.server.adapters.BytesWrittenAdapter;
 import zlhywlf.proxy.server.adapters.ClientToProxyAdapter;
 
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -25,7 +28,7 @@ public class ProxyServer {
     private final ChannelGroup channels = new DefaultChannelGroup("server group", GlobalEventExecutor.INSTANCE);
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     private final Thread jvmShutdownHook = new Thread(this::stop, "graceful-proxy-stop-hook");
-    private volatile SocketAddress boundAddress;
+    private volatile InetSocketAddress boundAddress;
 
     public ProxyServer(ProxyContext context) {
         this.context = context;
@@ -82,7 +85,7 @@ public class ProxyServer {
     }
 
     @SuppressWarnings("unchecked")
-    public void start() {
+    public ProxyServer start() {
         if (!isStopped()) {
             try {
                 Class<?> channelClazz = ClassUtils.getClass(PlatformDependent.getSystemClassLoader(), context.getProxyConfig().channelClass(), false);
@@ -90,14 +93,19 @@ public class ProxyServer {
                     throw new IllegalArgumentException("channelClass");
                 }
                 context.getProxyThreadPoolGroup().registerProxyServer(this);
+                BytesReadAdapter bytesReadAdapter = new BytesReadAdapter();
+                BytesWrittenAdapter bytesWrittenAdapter = new BytesWrittenAdapter();
                 ChannelFuture cf = new ServerBootstrap()
                     .group(context.getProxyThreadPoolGroup().getBossPool(), context.getProxyThreadPoolGroup().getClientToProxyPool())
                     .channel((Class<? extends ServerChannel>) channelClazz)
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     .childHandler(new ChannelInitializer<>() {
                         @Override
-                        protected void initChannel(Channel channel) {
-                            new ClientToProxyAdapter(ProxyServer.this, channel.pipeline());
+                        protected void initChannel(@NonNull Channel channel) {
+                            ChannelPipeline pipeline = channel.pipeline();
+                            pipeline.addLast("bytesReadAdapter", bytesReadAdapter);
+                            pipeline.addLast("bytesWrittenAdapter", bytesWrittenAdapter);
+                            new ClientToProxyAdapter(ProxyServer.this, pipeline);
                         }
                     })
                     .bind(context.getRequestedAddress()).addListener((ChannelFutureListener) f -> {
@@ -110,9 +118,9 @@ public class ProxyServer {
                     throw new RuntimeException(cause);
                 }
                 Runtime.getRuntime().addShutdownHook(getJvmShutdownHook());
-                boundAddress = cf.channel().localAddress();
+                boundAddress = (InetSocketAddress) cf.channel().localAddress();
                 logger.info("Proxy started at address: {}", boundAddress);
-                return;
+                return this;
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
