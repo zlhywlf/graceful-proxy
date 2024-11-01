@@ -1,5 +1,5 @@
 package zlhywlf.proxy.server;
 
 public enum ProxyState {
-    AWAITING_INITIAL
+    AWAITING_INITIAL, DISCONNECTED, AWAITING_CHUNK
 }
