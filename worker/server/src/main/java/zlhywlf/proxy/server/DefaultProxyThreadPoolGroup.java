@@ -29,14 +29,13 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLo
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     private final List<ProxyServer<EventLoopGroup>> registeredServers = new ArrayList<>(1);
     private final Object SERVER_REGISTRATION_LOCK = new Object();
-    private final String category;
 
     public DefaultProxyThreadPoolGroup(ProxyThreadPoolConfig config) {
         proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
 
         try {
             Class<? extends EventLoopGroup> eventLoopClazz = config.getEventLoopClazz();
-            category = StringUtils.joinWith("-", config.getName(), proxyThreadPoolGroupId);
+            String category = StringUtils.joinWith("-", config.getName(), proxyThreadPoolGroupId);
             bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory("boss", eventLoopClazz, category));
             clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("clientToProxy", eventLoopClazz, category));
             proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("proxyToServer", eventLoopClazz, category));

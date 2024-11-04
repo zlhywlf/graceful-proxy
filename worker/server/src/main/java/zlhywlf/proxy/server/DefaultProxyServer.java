@@ -68,7 +68,7 @@ public class DefaultProxyServer implements ProxyServer<EventLoopGroup> {
         if (stopped.compareAndSet(false, true)) {
             logger.info("Shutting down proxy server {}", graceful ? "(graceful)" : "(non-graceful)");
             closeChannels(graceful);
-            context.getProxyThreadPoolGroup().unregisterProxyServer(this, graceful);
+            proxyThreadPoolGroup.unregisterProxyServer(this, graceful);
             try {
                 Runtime.getRuntime().removeShutdownHook(jvmShutdownHook);
             } catch (IllegalStateException ignore) {
@@ -93,9 +93,9 @@ public class DefaultProxyServer implements ProxyServer<EventLoopGroup> {
                 if (!ClassUtils.isAssignable(channelClazz, ServerChannel.class)) {
                     throw new IllegalArgumentException("channelClass");
                 }
-                context.getProxyThreadPoolGroup().registerProxyServer(this);
+                proxyThreadPoolGroup.registerProxyServer(this);
                 ChannelFuture cf = new ServerBootstrap()
-                    .group(context.getProxyThreadPoolGroup().getBossPool(), context.getProxyThreadPoolGroup().getClientToProxyPool())
+                    .group(proxyThreadPoolGroup.getBossPool(), proxyThreadPoolGroup.getClientToProxyPool())
                     .channel((Class<? extends ServerChannel>) channelClazz)
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     .childHandler(new ChannelInitializer<>() {

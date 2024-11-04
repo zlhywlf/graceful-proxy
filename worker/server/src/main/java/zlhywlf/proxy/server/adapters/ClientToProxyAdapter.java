@@ -11,11 +11,11 @@ import zlhywlf.proxy.core.ProxyServer;
 public class ClientToProxyAdapter extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    private final ProxyServer server;
+    private final ProxyServer<EventLoopGroup> server;
     private Channel clientChannel;
     private Channel remoteChannel;
 
-    public ClientToProxyAdapter(ProxyServer server, ChannelPipeline pipeline) {
+    public ClientToProxyAdapter(ProxyServer<EventLoopGroup> server, ChannelPipeline pipeline) {
         this.server = server;
         pipeline.addLast("httpServerCodec", new HttpRequestDecoder());
         pipeline.addLast("ClientToProxyAdapter", this);
@@ -39,7 +39,7 @@ public class ClientToProxyAdapter extends ChannelInboundHandlerAdapter {
             logger.info("host {} port {}", host, port);
             clientChannel.config().setAutoRead(false);
             ChannelFuture cf = new Bootstrap()
-                .group((EventLoopGroup) server.getProxyThreadPoolGroup().getProxyToServerPool())
+                .group(server.getProxyThreadPoolGroup().getProxyToServerPool())
                 .channel(clientChannel.getClass())
                 .handler(new HttpRequestEncoder())
                 .connect(host, port).addListener(f -> {
