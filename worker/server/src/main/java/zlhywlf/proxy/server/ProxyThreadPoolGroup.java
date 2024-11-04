@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 public class ProxyThreadPoolGroup {
     private static final Logger logger = LoggerFactory.getLogger(ProxyThreadPoolGroup.class);
-    private static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(0);
+    private static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(1);
 
     private final int proxyThreadPoolGroupId;
     private final EventLoopGroup bossPool;
