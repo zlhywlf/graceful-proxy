@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.server.ProxyBootstrap;
-import zlhywlf.proxy.server.ProxyServer;
+import zlhywlf.proxy.server.DefaultProxyServer;
 import zlhywlf.proxy.server.adapter.models.ResponseInfo;
 
 import java.io.IOException;
@@ -34,7 +34,7 @@ public class SimpleProxyTest {
     static Server webServer;
     static int webServerPort;
     static HttpHost webHost;
-    static ProxyServer proxyServer;
+    static DefaultProxyServer proxyServer;
 
     @BeforeAll
     static void init() {

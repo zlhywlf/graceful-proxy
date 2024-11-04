@@ -12,6 +12,8 @@ import lombok.NonNull;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.core.ProxyServer;
+import zlhywlf.proxy.core.ProxyThreadPoolGroup;
 import zlhywlf.proxy.server.adapters.ClientToProxyAdapter;
 
 import java.net.InetSocketAddress;
@@ -19,17 +21,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Getter
-public class ProxyServer {
-    private static final Logger logger = LoggerFactory.getLogger(ProxyServer.class);
+public class DefaultProxyServer implements ProxyServer<EventLoopGroup> {
+    private static final Logger logger = LoggerFactory.getLogger(DefaultProxyServer.class);
 
     private final ProxyContext context;
     private final ChannelGroup channels = new DefaultChannelGroup("server group", GlobalEventExecutor.INSTANCE);
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     private final Thread jvmShutdownHook = new Thread(this::stop, "graceful-proxy-stop-hook");
     private volatile InetSocketAddress boundAddress;
+    private final ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup;
 
-    public ProxyServer(ProxyContext context) {
+    public DefaultProxyServer(ProxyContext context) {
         this.context = context;
+        proxyThreadPoolGroup = context.getProxyThreadPoolGroup();
     }
 
     public void registerChannel(Channel channel) {
@@ -60,7 +64,6 @@ public class ProxyServer {
         }
     }
 
-
     public void doStop(boolean graceful) {
         if (stopped.compareAndSet(false, true)) {
             logger.info("Shutting down proxy server {}", graceful ? "(graceful)" : "(non-graceful)");
@@ -83,7 +86,7 @@ public class ProxyServer {
     }
 
     @SuppressWarnings("unchecked")
-    public ProxyServer start() {
+    public DefaultProxyServer start() {
         if (!isStopped()) {
             try {
                 Class<?> channelClazz = ClassUtils.getClass(PlatformDependent.getSystemClassLoader(), context.getProxyConfig().channelClass(), false);
@@ -98,7 +101,7 @@ public class ProxyServer {
                     .childHandler(new ChannelInitializer<>() {
                         @Override
                         protected void initChannel(@NonNull Channel channel) {
-                            new ClientToProxyAdapter(ProxyServer.this, channel.pipeline());
+                            new ClientToProxyAdapter(DefaultProxyServer.this, channel.pipeline());
                         }
                     })
                     .bind(context.getRequestedAddress()).addListener((ChannelFutureListener) f -> {

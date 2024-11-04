@@ -2,9 +2,12 @@ package zlhywlf.proxy.server;
 
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.core.ProxyServer;
+import zlhywlf.proxy.core.ProxyThreadPoolGroup;
 import zlhywlf.proxy.server.config.ProxyThreadPoolConfig;
 
 import java.lang.reflect.InvocationTargetException;
@@ -15,8 +18,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
-public class ProxyThreadPoolGroup {
-    private static final Logger logger = LoggerFactory.getLogger(ProxyThreadPoolGroup.class);
+public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLoopGroup> {
+    private static final Logger logger = LoggerFactory.getLogger(DefaultProxyThreadPoolGroup.class);
     private static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(1);
 
     private final int proxyThreadPoolGroupId;
@@ -24,16 +27,19 @@ public class ProxyThreadPoolGroup {
     private final EventLoopGroup clientToProxyPool;
     private final EventLoopGroup proxyToServerPool;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
-    private final List<ProxyServer> registeredServers = new ArrayList<>(1);
+    private final List<ProxyServer<EventLoopGroup>> registeredServers = new ArrayList<>(1);
     private final Object SERVER_REGISTRATION_LOCK = new Object();
+    private final String category;
 
-    public ProxyThreadPoolGroup(ProxyThreadPoolConfig config) {
+    public DefaultProxyThreadPoolGroup(ProxyThreadPoolConfig config) {
         proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
+
         try {
             Class<? extends EventLoopGroup> eventLoopClazz = config.getEventLoopClazz();
-            bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory("boss", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
-            clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("clientToProxy", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
-            proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("proxyToServer", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
+            category = StringUtils.joinWith("-", config.getName(), proxyThreadPoolGroupId);
+            bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory("boss", eventLoopClazz, category));
+            clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("clientToProxy", eventLoopClazz, category));
+            proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("proxyToServer", eventLoopClazz, category));
         } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException |
                  InstantiationException e) {
             throw new RuntimeException(e);
@@ -66,13 +72,15 @@ public class ProxyThreadPoolGroup {
         logger.info("Done shutting down thread pool group");
     }
 
-    public void registerProxyServer(ProxyServer proxyServer) {
+    @Override
+    public void registerProxyServer(ProxyServer<EventLoopGroup> proxyServer) {
         synchronized (SERVER_REGISTRATION_LOCK) {
             registeredServers.add(proxyServer);
         }
     }
 
-    public void unregisterProxyServer(ProxyServer proxyServer, boolean graceful) {
+    @Override
+    public void unregisterProxyServer(ProxyServer<EventLoopGroup> proxyServer, boolean graceful) {
         synchronized (SERVER_REGISTRATION_LOCK) {
             boolean wasRegistered = registeredServers.remove(proxyServer);
             if (!wasRegistered) {

@@ -6,7 +6,7 @@ import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.server.ProxyServer;
+import zlhywlf.proxy.core.ProxyServer;
 
 public class ClientToProxyAdapter extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
@@ -39,7 +39,7 @@ public class ClientToProxyAdapter extends ChannelInboundHandlerAdapter {
             logger.info("host {} port {}", host, port);
             clientChannel.config().setAutoRead(false);
             ChannelFuture cf = new Bootstrap()
-                .group(server.getContext().getProxyThreadPoolGroup().getProxyToServerPool())
+                .group((EventLoopGroup) server.getProxyThreadPoolGroup().getProxyToServerPool())
                 .channel(clientChannel.getClass())
                 .handler(new HttpRequestEncoder())
                 .connect(host, port).addListener(f -> {
