@@ -14,6 +14,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -66,8 +67,9 @@ public class SimpleProxyTest {
     }
 
     void compareProxiedAndNoProxiedGet(HttpHost host, String resourceUrl) {
-        ResponseInfo noProxied = httpGet(host, resourceUrl, true);
-        logger.info(noProxied.toString());
+        ResponseInfo noProxied = httpGet(host, resourceUrl, false);
+        ResponseInfo proxied = httpGet(host, resourceUrl, true);
+        Assertions.assertEquals(noProxied, proxied);
     }
 
     ResponseInfo httpGet(HttpHost host, String resourceUrl, boolean isProxied) {

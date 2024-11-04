@@ -75,7 +75,7 @@ public class ProxyBootstrap {
             helpFormatter.printHelp("gracefulProxy", options);
             return null;
         }
-       return doStart();
+        return doStart();
     }
 
     public ProxyConfig createProxyConfig() {
@@ -116,7 +116,7 @@ public class ProxyBootstrap {
             proxyThreadPoolConfig.setEventLoopClazzByName(proxyConfig.eventLoopClass());
             return new ProxyThreadPoolGroup(proxyThreadPoolConfig);
         });
-       return new ProxyServer(new ProxyContext(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig))).start();
+        return new ProxyServer(new ProxyContext(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig))).start();
     }
 
     private InetSocketAddress determineListenAddress(ProxyConfig proxyConfig) {

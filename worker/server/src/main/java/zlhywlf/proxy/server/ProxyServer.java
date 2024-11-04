@@ -98,8 +98,7 @@ public class ProxyServer {
                     .childHandler(new ChannelInitializer<>() {
                         @Override
                         protected void initChannel(@NonNull Channel channel) {
-                            ChannelPipeline pipeline = channel.pipeline();
-                            new ClientToProxyAdapter(ProxyServer.this, pipeline);
+                            new ClientToProxyAdapter(ProxyServer.this, channel.pipeline());
                         }
                     })
                     .bind(context.getRequestedAddress()).addListener((ChannelFutureListener) f -> {
