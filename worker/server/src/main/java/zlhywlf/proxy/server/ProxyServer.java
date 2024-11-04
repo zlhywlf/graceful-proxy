@@ -12,8 +12,6 @@ import lombok.NonNull;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.server.adapters.BytesReadAdapter;
-import zlhywlf.proxy.server.adapters.BytesWrittenAdapter;
 import zlhywlf.proxy.server.adapters.ClientToProxyAdapter;
 
 import java.net.InetSocketAddress;
@@ -93,8 +91,6 @@ public class ProxyServer {
                     throw new IllegalArgumentException("channelClass");
                 }
                 context.getProxyThreadPoolGroup().registerProxyServer(this);
-                BytesReadAdapter bytesReadAdapter = new BytesReadAdapter();
-                BytesWrittenAdapter bytesWrittenAdapter = new BytesWrittenAdapter();
                 ChannelFuture cf = new ServerBootstrap()
                     .group(context.getProxyThreadPoolGroup().getBossPool(), context.getProxyThreadPoolGroup().getClientToProxyPool())
                     .channel((Class<? extends ServerChannel>) channelClazz)
@@ -103,8 +99,6 @@ public class ProxyServer {
                         @Override
                         protected void initChannel(@NonNull Channel channel) {
                             ChannelPipeline pipeline = channel.pipeline();
-                            pipeline.addLast("bytesReadAdapter", bytesReadAdapter);
-                            pipeline.addLast("bytesWrittenAdapter", bytesWrittenAdapter);
                             new ClientToProxyAdapter(ProxyServer.this, pipeline);
                         }
                     })
