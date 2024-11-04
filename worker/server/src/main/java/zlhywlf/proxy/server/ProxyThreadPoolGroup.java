@@ -31,9 +31,9 @@ public class ProxyThreadPoolGroup {
         proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
         try {
             Class<? extends EventLoopGroup> eventLoopClazz = config.getEventLoopClazz();
-            bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory(eventLoopClazz, proxyThreadPoolGroupId, config.getName(), "boss"));
-            clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory(eventLoopClazz, proxyThreadPoolGroupId, config.getName(), "clientToProxy"));
-            proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory(eventLoopClazz, proxyThreadPoolGroupId, config.getName(), "proxyToServer"));
+            bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory("boss", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
+            clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("clientToProxy", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
+            proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("proxyToServer", eventLoopClazz, proxyThreadPoolGroupId, config.getName()));
         } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException |
                  InstantiationException e) {
             throw new RuntimeException(e);
