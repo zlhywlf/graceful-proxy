@@ -4,7 +4,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpRequestEncoder;
 import io.netty.util.ReferenceCounted;
 import org.slf4j.Logger;
@@ -20,6 +19,7 @@ public class ProxyToServerAdapter extends AbsAdapter {
 
     private final AbsAdapter client;
     private final InetSocketAddress remoteAddress;
+    private final Object connectLock = new Object();
 
     public ProxyToServerAdapter(ProxyServer<Channel> context, AbsAdapter client, InetSocketAddress remoteAddress) {
         super(context, ProxyState.DISCONNECTED, client.getWorkerGroup());
@@ -39,12 +39,25 @@ public class ProxyToServerAdapter extends AbsAdapter {
             connectAndWrite(msg0);
             return client.getChannel().newSucceededFuture();
         }
+        if (getCurrentState() == ProxyState.CONNECTING) {
+            synchronized (connectLock) {
+                if (getCurrentState() == ProxyState.CONNECTING) {
+                    try {
+                        connectLock.wait(30000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+        getChannel().writeAndFlush(msg);
         return null;
     }
 
     public void connectAndWrite(HttpRequest initialRequest) {
         logger.info("Starting new connection to: {}", remoteAddress);
         client.getChannel().config().setAutoRead(false);
+        become(ProxyState.CONNECTING);
         new Bootstrap()
             .group(getWorkerGroup())
             .channel(client.getChannel().getClass())
@@ -56,14 +69,16 @@ public class ProxyToServerAdapter extends AbsAdapter {
                 }
             })
             .connect(remoteAddress).addListener(f -> {
-                if (!f.isSuccess()) {
-                    client.getChannel().close();
+                synchronized (connectLock) {
+                    if (!f.isSuccess()) {
+                        client.getChannel().close();
+                    }
+                    become(ProxyState.AWAITING_INITIAL);
+                    write(initialRequest);
+                    client.getChannel().config().setAutoRead(true);
+                    connectLock.notifyAll();
                 }
-                getChannel().write(initialRequest);
-                getCtx().pipeline().remove(HttpRequestEncoder.class);
-                client.getChannel().config().setAutoRead(true);
             });
-        client.getCtx().pipeline().remove(HttpRequestDecoder.class);
     }
 
     @Override

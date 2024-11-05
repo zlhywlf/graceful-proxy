@@ -46,7 +46,7 @@ public class ClientToProxyAdapter extends AbsAdapter {
         }
     }
 
-    public void read(Object msg) throws InterruptedException {
+    public void read(Object msg) {
         logger.info("Reading: {}", msg);
         lastReadTime = System.currentTimeMillis();
         if (msg instanceof HttpObject msg0) {
@@ -56,17 +56,14 @@ public class ClientToProxyAdapter extends AbsAdapter {
         }
     }
 
-    void readHttp(HttpObject msg) throws InterruptedException {
+    void readHttp(HttpObject msg) {
         ProxyState nextState = getCurrentState();
         switch (nextState) {
             case AWAITING_INITIAL -> {
                 if (msg instanceof HttpMessage) {
                     nextState = readHttpInitial((HttpRequest) msg);
                 } else {
-                    if (server.getChannel() == null || !server.getChannel().isActive()) {
-                        Thread.sleep(5000);
-                    }
-                    server.getChannel().writeAndFlush(msg);
+                    server.write(msg);
                     logger.info("Dropping message because HTTP object was not an HttpMessage. HTTP object may be orphaned content from a short-circuited response. Message: {}", msg);
                 }
             }
