@@ -145,18 +145,12 @@ public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHan
             logger.info("Retaining reference counted message");
             ((ReferenceCounted) msg).retain();
         }
-        ChannelFuture f = write0(msg);
-        if (f != null) {
-            return f;
-        }
         logger.info("Writing: {}", msg);
         if (msg instanceof HttpObject msg0) {
             return writeHttp(msg0);
         }
         return writeToChannel(msg);
     }
-
-    public abstract ChannelFuture write0(Object msg);
 
     public ChannelFuture writeHttp(HttpObject msg) {
         if (msg instanceof LastHttpContent) {

@@ -25,7 +25,6 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
         logger.info("Created ClientToProxyAdapter");
     }
 
-
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         try {
@@ -37,7 +36,6 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
             super.channelInactive(ctx);
         }
     }
-
 
     @Override
     public ProxyState readHttpInitial(HttpRequest httpRequest) {
@@ -61,11 +59,5 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
     @Override
     public void readHTTPChunk(HttpContent chunk) {
         server.write(chunk);
-    }
-
-    @Override
-    public ChannelFuture write0(Object msg) {
-        // NO-OP
-        return null;
     }
 }
