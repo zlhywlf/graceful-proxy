@@ -2,15 +2,11 @@ package zlhywlf.proxy.server;
 
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyThreadPoolGroup;
-import zlhywlf.proxy.server.config.ProxyThreadPoolConfig;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLoopGroup> {
     private static final Logger logger = LoggerFactory.getLogger(DefaultProxyThreadPoolGroup.class);
-    private static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(1);
+    static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(1);
 
     private final int proxyThreadPoolGroupId;
     private final EventLoopGroup bossPool;
@@ -30,19 +26,11 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLo
     private final List<ProxyServer<EventLoopGroup>> registeredServers = new ArrayList<>(1);
     private final Object SERVER_REGISTRATION_LOCK = new Object();
 
-    public DefaultProxyThreadPoolGroup(ProxyThreadPoolConfig config) {
-        proxyThreadPoolGroupId = proxyThreadPoolGroupCount.getAndIncrement();
-
-        try {
-            Class<? extends EventLoopGroup> eventLoopClazz = config.getEventLoopClazz();
-            String category = StringUtils.joinWith("-", config.getName(), proxyThreadPoolGroupId);
-            bossPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 1, new ProxyThreadFactory("boss", eventLoopClazz, category));
-            clientToProxyPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("clientToProxy", eventLoopClazz, category));
-            proxyToServerPool = ConstructorUtils.invokeConstructor(eventLoopClazz, 0, new ProxyThreadFactory("proxyToServer", eventLoopClazz, category));
-        } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException |
-                 InstantiationException e) {
-            throw new RuntimeException(e);
-        }
+    public DefaultProxyThreadPoolGroup(int proxyThreadPoolGroupId, EventLoopGroup bossPool, EventLoopGroup clientToProxyPool, EventLoopGroup proxyToServerPool) {
+        this.proxyThreadPoolGroupId = proxyThreadPoolGroupId;
+        this.bossPool = bossPool;
+        this.clientToProxyPool = clientToProxyPool;
+        this.proxyToServerPool = proxyToServerPool;
     }
 
     private void close(boolean graceful) {

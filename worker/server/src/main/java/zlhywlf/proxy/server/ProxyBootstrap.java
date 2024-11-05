@@ -3,12 +3,12 @@ package zlhywlf.proxy.server;
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import org.apache.commons.cli.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyThreadPoolGroup;
-import zlhywlf.proxy.server.config.ProxyConfig;
-import zlhywlf.proxy.server.config.ProxyThreadPoolConfig;
+import zlhywlf.proxy.core.ProxyConfig;
 
 import java.lang.reflect.RecordComponent;
 import java.net.InetSocketAddress;
@@ -113,12 +113,15 @@ public class ProxyBootstrap {
     private DefaultProxyServer doStart() {
         ProxyConfig proxyConfig = createProxyConfig();
         ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup = Objects.requireNonNullElseGet(this.proxyThreadPoolGroup, () -> {
-            ProxyThreadPoolConfig proxyThreadPoolConfig = new ProxyThreadPoolConfig();
-            proxyThreadPoolConfig.setName(proxyConfig.name());
-            proxyThreadPoolConfig.setEventLoopClazzByName(proxyConfig.eventLoopClass());
-            return new DefaultProxyThreadPoolGroup(proxyThreadPoolConfig);
+            int proxyThreadPoolGroupId = DefaultProxyThreadPoolGroup.proxyThreadPoolGroupCount.getAndIncrement();
+            String category = StringUtils.joinWith("-", proxyConfig.name(), proxyThreadPoolGroupId);
+            String eventLoopClassName = proxyConfig.eventLoopClass();
+            EventLoopGroup bossPool = ProxyThreadFactory.create(category + "-boss", eventLoopClassName, 1);
+            EventLoopGroup clientToProxyPool = ProxyThreadFactory.create(category + "-clientToProxy", eventLoopClassName, 0);
+            EventLoopGroup proxyToServerPool = ProxyThreadFactory.create(category + "-proxyToServer", eventLoopClassName, 0);
+            return new DefaultProxyThreadPoolGroup(proxyThreadPoolGroupId, bossPool, clientToProxyPool, proxyToServerPool);
         });
-        return new DefaultProxyServer(new ProxyContext(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig))).start();
+        return new DefaultProxyServer(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig)).start();
     }
 
     private InetSocketAddress determineListenAddress(ProxyConfig proxyConfig) {
