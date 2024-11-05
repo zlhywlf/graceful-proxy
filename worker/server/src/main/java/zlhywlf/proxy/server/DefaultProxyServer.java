@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Getter
-public class DefaultProxyServer implements ProxyServer {
+public class DefaultProxyServer implements ProxyServer<Channel> {
     private static final Logger logger = LoggerFactory.getLogger(DefaultProxyServer.class);
 
     private final ProxyConfig config;
@@ -28,19 +28,21 @@ public class DefaultProxyServer implements ProxyServer {
     private final AtomicBoolean stopped = new AtomicBoolean(false);
     private final Thread jvmShutdownHook = new Thread(this::stop, "graceful-proxy-stop-hook");
     private volatile InetSocketAddress boundAddress;
-    private final ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup;
+    private final ProxyThreadPoolGroup<EventLoopGroup, Channel> proxyThreadPoolGroup;
     private final InetSocketAddress requestedAddress;
 
-    public DefaultProxyServer(ProxyConfig config, ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup, InetSocketAddress requestedAddress) {
+    public DefaultProxyServer(ProxyConfig config, ProxyThreadPoolGroup<EventLoopGroup, Channel> proxyThreadPoolGroup, InetSocketAddress requestedAddress) {
         this.proxyThreadPoolGroup = proxyThreadPoolGroup;
         this.config = config;
         this.requestedAddress = requestedAddress;
     }
 
+    @Override
     public void registerChannel(Channel channel) {
         channels.add(channel);
     }
 
+    @Override
     public void unregisterChannel(Channel channel) {
         if (channel.isOpen()) channel.close();
         channels.remove(channel);

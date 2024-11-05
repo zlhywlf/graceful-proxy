@@ -1,5 +1,6 @@
 package zlhywlf.proxy.server;
 
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import org.apache.commons.cli.*;
@@ -55,7 +56,7 @@ public class ProxyBootstrap {
     }};
 
     private final CommandLine cmd;
-    private ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup;
+    private ProxyThreadPoolGroup<EventLoopGroup, Channel> proxyThreadPoolGroup;
     private InetSocketAddress requestedAddress;
     private boolean allowLocalOnly = true;
 
@@ -95,7 +96,7 @@ public class ProxyBootstrap {
         }
     }
 
-    public ProxyBootstrap withProxyThreadPoolGroup(ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup) {
+    public ProxyBootstrap withProxyThreadPoolGroup(ProxyThreadPoolGroup<EventLoopGroup, Channel> proxyThreadPoolGroup) {
         this.proxyThreadPoolGroup = proxyThreadPoolGroup;
         return this;
     }
@@ -112,7 +113,7 @@ public class ProxyBootstrap {
 
     private DefaultProxyServer doStart() {
         ProxyConfig proxyConfig = createProxyConfig();
-        ProxyThreadPoolGroup<EventLoopGroup> proxyThreadPoolGroup = Objects.requireNonNullElseGet(this.proxyThreadPoolGroup, () -> {
+        ProxyThreadPoolGroup<EventLoopGroup, Channel> proxyThreadPoolGroup = Objects.requireNonNullElseGet(this.proxyThreadPoolGroup, () -> {
             int proxyThreadPoolGroupId = DefaultProxyThreadPoolGroup.proxyThreadPoolGroupCount.getAndIncrement();
             String category = StringUtils.joinWith("-", proxyConfig.name(), proxyThreadPoolGroupId);
             String eventLoopClassName = proxyConfig.eventLoopClass();

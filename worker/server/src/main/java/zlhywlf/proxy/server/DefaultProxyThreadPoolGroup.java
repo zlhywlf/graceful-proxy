@@ -1,5 +1,6 @@
 package zlhywlf.proxy.server;
 
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -14,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
-public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLoopGroup> {
+public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLoopGroup, Channel> {
     private static final Logger logger = LoggerFactory.getLogger(DefaultProxyThreadPoolGroup.class);
     static final AtomicInteger proxyThreadPoolGroupCount = new AtomicInteger(1);
 
@@ -23,7 +24,7 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLo
     private final EventLoopGroup clientToProxyPool;
     private final EventLoopGroup proxyToServerPool;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
-    private final List<ProxyServer> registeredServers = new ArrayList<>(1);
+    private final List<ProxyServer<Channel>> registeredServers = new ArrayList<>(1);
     private final Object SERVER_REGISTRATION_LOCK = new Object();
 
     public DefaultProxyThreadPoolGroup(int proxyThreadPoolGroupId, EventLoopGroup bossPool, EventLoopGroup clientToProxyPool, EventLoopGroup proxyToServerPool) {
@@ -60,14 +61,14 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup<EventLo
     }
 
     @Override
-    public void registerProxyServer(ProxyServer proxyServer) {
+    public void registerProxyServer(ProxyServer<Channel> proxyServer) {
         synchronized (SERVER_REGISTRATION_LOCK) {
             registeredServers.add(proxyServer);
         }
     }
 
     @Override
-    public void unregisterProxyServer(ProxyServer proxyServer, boolean graceful) {
+    public void unregisterProxyServer(ProxyServer<Channel> proxyServer, boolean graceful) {
         synchronized (SERVER_REGISTRATION_LOCK) {
             boolean wasRegistered = registeredServers.remove(proxyServer);
             if (!wasRegistered) {
