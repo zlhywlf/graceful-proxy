@@ -28,7 +28,7 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
     }
 
     @Override
-    public ChannelFuture write(Object msg) {
+    public ChannelFuture write0(Object msg) {
         logger.info("Requested write of {}", msg);
         if (msg instanceof ReferenceCounted) {
             logger.info("Retaining reference counted message");
@@ -50,7 +50,7 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
                 }
             }
         }
-        return write0(msg);
+        return null;
     }
 
     public void connectAndWrite(HttpRequest initialRequest) {

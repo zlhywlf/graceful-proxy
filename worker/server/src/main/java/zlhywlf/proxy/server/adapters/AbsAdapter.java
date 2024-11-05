@@ -8,6 +8,7 @@ import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,6 @@ public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHan
     public boolean is(ProxyState state) {
         return currentState == state;
     }
-
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
@@ -134,13 +134,29 @@ public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHan
         become(nextState);
     }
 
-    public ChannelFuture write0(Object msg) {
+    public abstract ProxyState readHttpInitial(T msg);
+
+    public abstract void readRaw(ByteBuf msg);
+
+    public abstract void readHTTPChunk(HttpContent chunk);
+
+    public ChannelFuture write(Object msg) {
+        if (msg instanceof ReferenceCounted) {
+            logger.info("Retaining reference counted message");
+            ((ReferenceCounted) msg).retain();
+        }
+        ChannelFuture f = write0(msg);
+        if (f != null) {
+            return f;
+        }
         logger.info("Writing: {}", msg);
         if (msg instanceof HttpObject msg0) {
             return writeHttp(msg0);
         }
         return writeToChannel(msg);
     }
+
+    public abstract ChannelFuture write0(Object msg);
 
     public ChannelFuture writeHttp(HttpObject msg) {
         if (msg instanceof LastHttpContent) {
@@ -154,12 +170,4 @@ public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHan
     public ChannelFuture writeToChannel(final Object msg) {
         return channel.writeAndFlush(msg);
     }
-
-    public abstract ChannelFuture write(Object msg);
-
-    public abstract ProxyState readHttpInitial(T msg);
-
-    public abstract void readRaw(ByteBuf msg);
-
-    public abstract void readHTTPChunk(HttpContent chunk);
 }

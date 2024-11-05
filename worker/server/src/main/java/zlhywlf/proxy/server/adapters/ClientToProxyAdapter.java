@@ -4,7 +4,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.ReferenceCounted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -65,11 +64,8 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
     }
 
     @Override
-    public ChannelFuture write(Object msg) {
-        if (msg instanceof ReferenceCounted) {
-            logger.info("Retaining reference counted message");
-            ((ReferenceCounted) msg).retain();
-        }
-        return write0(msg);
+    public ChannelFuture write0(Object msg) {
+        // NO-OP
+        return null;
     }
 }
