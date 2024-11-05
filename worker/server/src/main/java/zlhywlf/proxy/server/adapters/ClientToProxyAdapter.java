@@ -1,9 +1,10 @@
 package zlhywlf.proxy.server.adapters;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.util.ReferenceCounted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -11,28 +12,20 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-public class ClientToProxyAdapter extends AbsAdapter {
+public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    private volatile long lastReadTime;
-    private volatile AbsAdapter server;
+    private volatile AbsAdapter<HttpResponse> server;
 
     public ClientToProxyAdapter(ProxyServer<Channel> context, ChannelPipeline pipeline, EventLoopGroup workerGroup) {
         super(context, ProxyState.AWAITING_INITIAL, workerGroup);
         logger.info("Configuring ChannelPipeline");
         pipeline.addLast("httpServerCodec", new HttpRequestDecoder());
+        pipeline.addLast("HttpResponseEncoder", new HttpResponseEncoder());
         pipeline.addLast("ClientToProxyAdapter", this);
         logger.info("Created ClientToProxyAdapter");
     }
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        try {
-            read(msg);
-        } finally {
-            ReferenceCountUtil.release(msg);
-        }
-    }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
@@ -46,32 +39,9 @@ public class ClientToProxyAdapter extends AbsAdapter {
         }
     }
 
-    public void read(Object msg) {
-        logger.info("Reading: {}", msg);
-        lastReadTime = System.currentTimeMillis();
-        if (msg instanceof HttpObject msg0) {
-            readHttp(msg0);
-        } else {
-            throw new UnsupportedOperationException("Unsupported message type: " + msg.getClass().getName());
-        }
-    }
 
-    void readHttp(HttpObject msg) {
-        ProxyState nextState = getCurrentState();
-        switch (nextState) {
-            case AWAITING_INITIAL -> {
-                if (msg instanceof HttpMessage) {
-                    nextState = readHttpInitial((HttpRequest) msg);
-                } else {
-                    server.write(msg);
-                    logger.info("Dropping message because HTTP object was not an HttpMessage. HTTP object may be orphaned content from a short-circuited response. Message: {}", msg);
-                }
-            }
-        }
-        become(nextState);
-    }
-
-    ProxyState readHttpInitial(HttpRequest httpRequest) {
+    @Override
+    public ProxyState readHttpInitial(HttpRequest httpRequest) {
         String hostAndPortStr = httpRequest.headers().get("Host");
         String[] hostPortArray = hostAndPortStr.split(":");
         String host = hostPortArray[0];
@@ -81,11 +51,25 @@ public class ClientToProxyAdapter extends AbsAdapter {
         }
         server = new ProxyToServerAdapter(getContext(), this, new InetSocketAddress(host, port));
         server.write(httpRequest);
-        return ProxyState.AWAITING_INITIAL;
+        return httpRequest instanceof LastHttpContent ? ProxyState.AWAITING_INITIAL : ProxyState.AWAITING_CHUNK;
+    }
+
+    @Override
+    public void readRaw(ByteBuf msg) {
+        server.write(msg);
+    }
+
+    @Override
+    public void readHTTPChunk(HttpContent chunk) {
+        server.write(chunk);
     }
 
     @Override
     public ChannelFuture write(Object msg) {
-        return null;
+        if (msg instanceof ReferenceCounted) {
+            logger.info("Retaining reference counted message");
+            ((ReferenceCounted) msg).retain();
+        }
+        return write0(msg);
     }
 }

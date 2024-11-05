@@ -1,10 +1,10 @@
 package zlhywlf.proxy.server.adapters;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpRequestEncoder;
+import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCounted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,14 +14,14 @@ import zlhywlf.proxy.core.ProxyState;
 import java.net.InetSocketAddress;
 
 
-public class ProxyToServerAdapter extends AbsAdapter {
+public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
     private static final Logger logger = LoggerFactory.getLogger(ProxyToServerAdapter.class);
 
-    private final AbsAdapter client;
+    private final AbsAdapter<HttpRequest> client;
     private final InetSocketAddress remoteAddress;
     private final Object connectLock = new Object();
 
-    public ProxyToServerAdapter(ProxyServer<Channel> context, AbsAdapter client, InetSocketAddress remoteAddress) {
+    public ProxyToServerAdapter(ProxyServer<Channel> context, AbsAdapter<HttpRequest> client, InetSocketAddress remoteAddress) {
         super(context, ProxyState.DISCONNECTED, client.getWorkerGroup());
         this.client = client;
         this.remoteAddress = remoteAddress;
@@ -50,8 +50,7 @@ public class ProxyToServerAdapter extends AbsAdapter {
                 }
             }
         }
-        getChannel().writeAndFlush(msg);
-        return null;
+        return write0(msg);
     }
 
     public void connectAndWrite(HttpRequest initialRequest) {
@@ -65,6 +64,7 @@ public class ProxyToServerAdapter extends AbsAdapter {
                 @Override
                 protected void initChannel(Channel channel) throws Exception {
                     channel.pipeline().addLast("httpRequestEncoder", new HttpRequestEncoder());
+                    channel.pipeline().addLast("HttpResponseDecoder", new HttpResponseDecoder());
                     channel.pipeline().addLast("proxyToServerAdapter", ProxyToServerAdapter.this);
                 }
             })
@@ -82,8 +82,20 @@ public class ProxyToServerAdapter extends AbsAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        client.getChannel().writeAndFlush(msg);
+    public ProxyState readHttpInitial(HttpResponse msg) {
+        logger.info("Received raw response: {}", msg);
+        client.write(msg);
+        return ProxyState.AWAITING_CHUNK;
+    }
+
+    @Override
+    public void readRaw(ByteBuf msg) {
+        client.write(msg);
+    }
+
+    @Override
+    public void readHTTPChunk(HttpContent chunk) {
+        client.write(chunk);
     }
 
     @Override
