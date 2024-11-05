@@ -5,14 +5,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.ReferenceCounted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
-
 
 public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
     private static final Logger logger = LoggerFactory.getLogger(ProxyToServerAdapter.class);
