@@ -15,7 +15,7 @@ public class TimeAdapterTest {
     @Test
     void testSuccess() {
         EmbeddedChannel channel = new EmbeddedChannel();
-        new ClientToProxyAdapter(null, channel.pipeline());
+        new ClientToProxyAdapter(null, channel.pipeline(), null);
         DefaultFullHttpRequest req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/", Unpooled.wrappedBuffer(TimeAdapterTest.class.getName().getBytes()));
         channel.writeInbound(req);
         channel.flushInbound();

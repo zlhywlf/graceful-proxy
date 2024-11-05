@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Getter
-public class DefaultProxyServer implements ProxyServer<EventLoopGroup> {
+public class DefaultProxyServer implements ProxyServer {
     private static final Logger logger = LoggerFactory.getLogger(DefaultProxyServer.class);
 
     private final ProxyConfig config;
@@ -96,7 +96,7 @@ public class DefaultProxyServer implements ProxyServer<EventLoopGroup> {
                 .childHandler(new ChannelInitializer<>() {
                     @Override
                     protected void initChannel(@NonNull Channel channel) {
-                        new ClientToProxyAdapter(DefaultProxyServer.this, channel.pipeline());
+                        new ClientToProxyAdapter(DefaultProxyServer.this, channel.pipeline(), proxyThreadPoolGroup.getProxyToServerPool());
                     }
                 })
                 .bind(requestedAddress).addListener((ChannelFutureListener) f -> {

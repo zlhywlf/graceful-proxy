@@ -1,9 +1,9 @@
 package zlhywlf.proxy.core;
 
 public interface ProxyThreadPoolGroup<T> {
-    void registerProxyServer(ProxyServer<T> proxyServer);
+    void registerProxyServer(ProxyServer proxyServer);
 
-    void unregisterProxyServer(ProxyServer<T> proxyServer, boolean graceful);
+    void unregisterProxyServer(ProxyServer proxyServer, boolean graceful);
 
     T getProxyToServerPool();
 
