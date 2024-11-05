@@ -1,9 +1,6 @@
 package zlhywlf.proxy.server.adapters;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.*;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +15,12 @@ public abstract class AbsAdapter extends ChannelInboundHandlerAdapter {
     private final ProxyServer<Channel> context;
     protected volatile Channel channel;
     private volatile ChannelHandlerContext ctx;
+    private final EventLoopGroup workerGroup;
 
-    public AbsAdapter(ProxyServer<Channel> context, ProxyState currentState) {
+    public AbsAdapter(ProxyServer<Channel> context, ProxyState currentState, EventLoopGroup workerGroup) {
         this.context = context;
         this.currentState = currentState;
+        this.workerGroup = workerGroup;
     }
 
     public void become(ProxyState state) {

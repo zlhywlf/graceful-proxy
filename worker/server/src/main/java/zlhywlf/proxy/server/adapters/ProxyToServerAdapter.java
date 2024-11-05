@@ -20,13 +20,11 @@ public class ProxyToServerAdapter extends AbsAdapter {
 
     private final AbsAdapter client;
     private final InetSocketAddress remoteAddress;
-    private final EventLoopGroup workerGroup;
 
-    public ProxyToServerAdapter(ProxyServer<Channel> context, AbsAdapter client, EventLoopGroup workerGroup, InetSocketAddress remoteAddress) {
-        super(context, ProxyState.DISCONNECTED);
+    public ProxyToServerAdapter(ProxyServer<Channel> context, AbsAdapter client, InetSocketAddress remoteAddress) {
+        super(context, ProxyState.DISCONNECTED, client.getWorkerGroup());
         this.client = client;
         this.remoteAddress = remoteAddress;
-        this.workerGroup = workerGroup;
     }
 
     @Override
@@ -48,7 +46,7 @@ public class ProxyToServerAdapter extends AbsAdapter {
         logger.info("Starting new connection to: {}", remoteAddress);
         client.getChannel().config().setAutoRead(false);
         new Bootstrap()
-            .group(workerGroup)
+            .group(getWorkerGroup())
             .channel(client.getChannel().getClass())
             .handler(new ChannelInitializer<>() {
                 @Override

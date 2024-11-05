@@ -4,7 +4,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCountUtil;
-import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -12,17 +11,14 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-@Getter
 public class ClientToProxyAdapter extends AbsAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    private final EventLoopGroup workerGroup;
     private volatile long lastReadTime;
     private volatile AbsAdapter server;
 
     public ClientToProxyAdapter(ProxyServer<Channel> context, ChannelPipeline pipeline, EventLoopGroup workerGroup) {
-        super(context, ProxyState.AWAITING_INITIAL);
-        this.workerGroup = workerGroup;
+        super(context, ProxyState.AWAITING_INITIAL, workerGroup);
         logger.info("Configuring ChannelPipeline");
         pipeline.addLast("httpServerCodec", new HttpRequestDecoder());
         pipeline.addLast("ClientToProxyAdapter", this);
@@ -86,7 +82,7 @@ public class ClientToProxyAdapter extends AbsAdapter {
         if (hostPortArray.length > 1) {
             port = Integer.parseInt(hostPortArray[1]);
         }
-        server = new ProxyToServerAdapter(getContext(), this, workerGroup, new InetSocketAddress(host, port));
+        server = new ProxyToServerAdapter(getContext(), this, new InetSocketAddress(host, port));
         server.write(httpRequest);
         return ProxyState.AWAITING_INITIAL;
     }
