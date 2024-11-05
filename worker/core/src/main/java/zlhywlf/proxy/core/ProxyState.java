@@ -1,5 +1,6 @@
 package zlhywlf.proxy.core;
 
 public enum ProxyState {
-    AWAITING_INITIAL
+    AWAITING_INITIAL,
+    DISCONNECTED
 }
