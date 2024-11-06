@@ -1,10 +1,10 @@
 package zlhywlf.proxy.adapters;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
+import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -19,7 +19,7 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> 
     private final Object connectLock = new Object();
 
     public ProxyToServerAdapter(ProxyServer context, AbsAdapter<HttpRequest, HttpResponse> target, InetSocketAddress remoteAddress) {
-        super(context, ProxyState.DISCONNECTED, target.getWorkerGroup(), target);
+        super(context, ProxyState.DISCONNECTED, target);
         this.remoteAddress = remoteAddress;
     }
 
@@ -50,11 +50,11 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> 
         getTarget().getChannel().config().setAutoRead(false);
         become(ProxyState.CONNECTING);
         new Bootstrap()
-            .group(getWorkerGroup())
+            .group(getContext().getProxyThreadPoolGroup().getProxyToServerPool())
             .channel(getTarget().getChannel().getClass())
             .handler(new ChannelInitializer<>() {
                 @Override
-                protected void initChannel(Channel channel) throws Exception {
+                protected void initChannel(@NonNull Channel channel) {
                     channel.pipeline().addLast("httpRequestEncoder", new HttpRequestEncoder());
                     channel.pipeline().addLast("HttpResponseDecoder", new HttpResponseDecoder());
                     channel.pipeline().addLast("proxyToServerAdapter", ProxyToServerAdapter.this);
@@ -81,7 +81,7 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> 
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(@NonNull ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Disconnected");
             if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {

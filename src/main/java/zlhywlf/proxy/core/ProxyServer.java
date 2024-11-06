@@ -6,4 +6,6 @@ public interface ProxyServer {
     void registerChannel(Channel channel);
 
     void unregisterChannel(Channel channel);
+
+    ProxyThreadPoolGroup getProxyThreadPoolGroup();
 }

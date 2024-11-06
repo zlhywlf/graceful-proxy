@@ -7,6 +7,7 @@ import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,19 +22,17 @@ public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> ext
     private final ProxyServer context;
     protected volatile Channel channel;
     private volatile ChannelHandlerContext ctx;
-    private final EventLoopGroup workerGroup;
     private volatile long lastReadTime;
     @Setter
     private volatile AbsAdapter<K, T> target;
 
-    public AbsAdapter(ProxyServer context, ProxyState currentState, EventLoopGroup workerGroup) {
-        this(context, currentState, workerGroup, null);
+    public AbsAdapter(ProxyServer context, ProxyState currentState) {
+        this(context, currentState, null);
     }
 
-    public AbsAdapter(ProxyServer context, ProxyState currentState, EventLoopGroup workerGroup, AbsAdapter<K, T> target) {
+    public AbsAdapter(ProxyServer context, ProxyState currentState, AbsAdapter<K, T> target) {
         this.context = context;
         this.currentState = currentState;
-        this.workerGroup = workerGroup;
         this.target = target;
     }
 
@@ -46,7 +45,7 @@ public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> ext
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(@NonNull ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Connected");
         } finally {
@@ -99,7 +98,7 @@ public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> ext
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(@NonNull ChannelHandlerContext ctx, @NonNull Object msg) {
         try {
             read(msg);
         } finally {

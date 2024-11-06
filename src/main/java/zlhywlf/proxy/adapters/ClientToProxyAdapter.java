@@ -3,6 +3,7 @@ package zlhywlf.proxy.adapters;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
+import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -13,8 +14,8 @@ import java.net.InetSocketAddress;
 public class ClientToProxyAdapter extends AbsAdapter<HttpRequest, HttpResponse> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
-    public ClientToProxyAdapter(ProxyServer context, ChannelPipeline pipeline, EventLoopGroup workerGroup) {
-        super(context, ProxyState.AWAITING_INITIAL, workerGroup);
+    public ClientToProxyAdapter(ProxyServer context, ChannelPipeline pipeline) {
+        super(context, ProxyState.AWAITING_INITIAL);
         logger.info("Configuring ChannelPipeline");
         pipeline.addLast("httpServerCodec", new HttpRequestDecoder());
         pipeline.addLast("HttpResponseEncoder", new HttpResponseEncoder());
@@ -23,7 +24,7 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest, HttpResponse> 
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+    public void channelInactive(@NonNull ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Disconnected");
             if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {

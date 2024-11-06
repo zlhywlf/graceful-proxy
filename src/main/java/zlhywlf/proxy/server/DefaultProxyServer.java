@@ -99,7 +99,7 @@ public class DefaultProxyServer implements ProxyServer {
                 .childHandler(new ChannelInitializer<>() {
                     @Override
                     protected void initChannel(@NonNull Channel channel) {
-                        new ClientToProxyAdapter(DefaultProxyServer.this, channel.pipeline(), proxyThreadPoolGroup.getProxyToServerPool());
+                        new ClientToProxyAdapter(DefaultProxyServer.this, channel.pipeline());
                     }
                 })
                 .bind(requestedAddress).addListener((ChannelFutureListener) f -> {
