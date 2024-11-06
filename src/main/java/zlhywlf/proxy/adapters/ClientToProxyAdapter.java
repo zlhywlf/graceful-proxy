@@ -1,9 +1,7 @@
 package zlhywlf.proxy.adapters;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import lombok.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -21,18 +19,6 @@ public class ClientToProxyAdapter extends ProxyAdapter<HttpRequest, HttpResponse
         pipeline.addLast("HttpResponseEncoder", new HttpResponseEncoder());
         pipeline.addLast("ClientToProxyAdapter", this);
         logger.info("Created ClientToProxyAdapter");
-    }
-
-    @Override
-    public void channelInactive(@NonNull ChannelHandlerContext ctx) throws Exception {
-        try {
-            logger.info("Disconnected");
-            if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {
-                getTarget().getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-            }
-        } finally {
-            super.channelInactive(ctx);
-        }
     }
 
     @Override

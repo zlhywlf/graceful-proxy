@@ -1,7 +1,6 @@
 package zlhywlf.proxy.adapters;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import lombok.NonNull;
@@ -78,17 +77,5 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
         logger.info("Received raw response: {}", msg);
         getTarget().write(msg);
         return ProxyState.AWAITING_CHUNK;
-    }
-
-    @Override
-    public void channelInactive(@NonNull ChannelHandlerContext ctx) throws Exception {
-        try {
-            logger.info("Disconnected");
-            if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {
-                getTarget().getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-            }
-        } finally {
-            super.channelInactive(ctx);
-        }
     }
 }

@@ -4,10 +4,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
-import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +13,10 @@ import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
 
 @Getter
-public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> extends ChannelInboundHandlerAdapter {
+public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> extends BaseAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ProxyAdapter.class);
 
     private volatile ProxyState currentState;
-    private final ProxyServer context;
-    protected volatile Channel channel;
-    private volatile ChannelHandlerContext ctx;
     private volatile long lastReadTime;
     @Setter
     private volatile ProxyAdapter<K, T> target;
@@ -31,9 +26,17 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
     }
 
     public ProxyAdapter(ProxyServer context, ProxyState currentState, ProxyAdapter<K, T> target) {
-        this.context = context;
+        super(context);
         this.currentState = currentState;
         this.target = target;
+    }
+
+    @Override
+    public void disconnected() {
+        logger.info("Disconnected");
+        if (target.getChannel() != null && target.getChannel().isActive()) {
+            target.getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+        }
     }
 
     public void become(ProxyState state) {
@@ -42,68 +45,6 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
 
     public boolean is(ProxyState state) {
         return currentState == state;
-    }
-
-    @Override
-    public void channelActive(@NonNull ChannelHandlerContext ctx) throws Exception {
-        try {
-            logger.info("Connected");
-        } finally {
-            super.channelActive(ctx);
-        }
-    }
-
-    @Override
-    public void channelRegistered(ChannelHandlerContext ctx) throws Exception {
-        try {
-            this.ctx = ctx;
-            channel = ctx.channel();
-            context.registerChannel(channel);
-        } finally {
-            super.channelRegistered(ctx);
-        }
-    }
-
-    @Override
-    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
-        try {
-            context.unregisterChannel(ctx.channel());
-        } finally {
-            super.channelUnregistered(ctx);
-        }
-    }
-
-    @Override
-    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-        logger.info("Writability changed. Is writable: {}", channel.isWritable());
-        try {
-            if (channel.isWritable()) {
-                logger.info("Became writeable");
-            } else {
-                logger.info("Became saturated");
-            }
-        } finally {
-            super.channelWritabilityChanged(ctx);
-        }
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        super.exceptionCaught(ctx, cause);
-    }
-
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        super.userEventTriggered(ctx, evt);
-    }
-
-    @Override
-    public void channelRead(@NonNull ChannelHandlerContext ctx, @NonNull Object msg) {
-        try {
-            read(msg);
-        } finally {
-            ReferenceCountUtil.release(msg);
-        }
     }
 
     public void read(Object msg) {
@@ -162,7 +103,7 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
 
     public ChannelFuture writeHttp(HttpObject msg) {
         if (msg instanceof LastHttpContent) {
-            channel.write(msg);
+            getChannel().write(msg);
             logger.info("Writing an empty buffer to signal the end of our chunked transfer");
             return writeToChannel(Unpooled.EMPTY_BUFFER);
         }
@@ -170,6 +111,6 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
     }
 
     public ChannelFuture writeToChannel(final Object msg) {
-        return channel.writeAndFlush(msg);
+        return getChannel().writeAndFlush(msg);
     }
 }
