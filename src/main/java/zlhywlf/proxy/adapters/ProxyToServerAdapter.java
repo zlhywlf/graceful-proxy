@@ -81,16 +81,6 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> 
     }
 
     @Override
-    public void readRaw(ByteBuf msg) {
-        getTarget().write(msg);
-    }
-
-    @Override
-    public void readHTTPChunk(HttpContent chunk) {
-        getTarget().write(chunk);
-    }
-
-    @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Disconnected");

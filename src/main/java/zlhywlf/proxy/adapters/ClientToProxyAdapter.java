@@ -1,6 +1,5 @@
 package zlhywlf.proxy.adapters;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
@@ -47,15 +46,5 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest, HttpResponse> 
         setTarget(new ProxyToServerAdapter(getContext(), this, new InetSocketAddress(host, port)));
         getTarget().write(httpRequest);
         return httpRequest instanceof LastHttpContent ? ProxyState.AWAITING_INITIAL : ProxyState.AWAITING_CHUNK;
-    }
-
-    @Override
-    public void readRaw(ByteBuf msg) {
-        getTarget().write(msg);
-    }
-
-    @Override
-    public void readHTTPChunk(HttpContent chunk) {
-        getTarget().write(chunk);
     }
 }

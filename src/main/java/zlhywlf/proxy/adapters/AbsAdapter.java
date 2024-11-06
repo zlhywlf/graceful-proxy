@@ -141,9 +141,13 @@ public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> ext
 
     public abstract ProxyState readHttpInitial(T msg);
 
-    public abstract void readRaw(ByteBuf msg);
+    public void readRaw(ByteBuf msg) {
+        getTarget().write(msg);
+    }
 
-    public abstract void readHTTPChunk(HttpContent chunk);
+    public void readHTTPChunk(HttpContent msg) {
+        getTarget().write(msg);
+    }
 
     public ChannelFuture write(Object msg) {
         if (msg instanceof ReferenceCounted) {
