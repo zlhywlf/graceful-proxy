@@ -11,10 +11,8 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
+public class ClientToProxyAdapter extends AbsAdapter<HttpRequest, HttpResponse> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
-
-    private volatile AbsAdapter<HttpResponse> server;
 
     public ClientToProxyAdapter(ProxyServer context, ChannelPipeline pipeline, EventLoopGroup workerGroup) {
         super(context, ProxyState.AWAITING_INITIAL, workerGroup);
@@ -29,8 +27,8 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Disconnected");
-            if (server.getChannel() != null && server.getChannel().isActive()) {
-                server.getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+            if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {
+                getTarget().getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
             }
         } finally {
             super.channelInactive(ctx);
@@ -46,18 +44,18 @@ public class ClientToProxyAdapter extends AbsAdapter<HttpRequest> {
         if (hostPortArray.length > 1) {
             port = Integer.parseInt(hostPortArray[1]);
         }
-        server = new ProxyToServerAdapter(getContext(), this, new InetSocketAddress(host, port));
-        server.write(httpRequest);
+        setTarget(new ProxyToServerAdapter(getContext(), this, new InetSocketAddress(host, port)));
+        getTarget().write(httpRequest);
         return httpRequest instanceof LastHttpContent ? ProxyState.AWAITING_INITIAL : ProxyState.AWAITING_CHUNK;
     }
 
     @Override
     public void readRaw(ByteBuf msg) {
-        server.write(msg);
+        getTarget().write(msg);
     }
 
     @Override
     public void readHTTPChunk(HttpContent chunk) {
-        server.write(chunk);
+        getTarget().write(chunk);
     }
 }

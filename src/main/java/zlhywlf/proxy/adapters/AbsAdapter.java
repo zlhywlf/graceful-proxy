@@ -3,20 +3,18 @@ package zlhywlf.proxy.adapters;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
-import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpMessage;
-import io.netty.handler.codec.http.HttpObject;
-import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.http.*;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
 import lombok.Getter;
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
 
 @Getter
-public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHandlerAdapter {
+public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> extends ChannelInboundHandlerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(AbsAdapter.class);
 
     private volatile ProxyState currentState;
@@ -25,11 +23,18 @@ public abstract class AbsAdapter<T extends HttpObject> extends ChannelInboundHan
     private volatile ChannelHandlerContext ctx;
     private final EventLoopGroup workerGroup;
     private volatile long lastReadTime;
+    @Setter
+    private volatile AbsAdapter<K, T> target;
 
     public AbsAdapter(ProxyServer context, ProxyState currentState, EventLoopGroup workerGroup) {
+        this(context, currentState, workerGroup, null);
+    }
+
+    public AbsAdapter(ProxyServer context, ProxyState currentState, EventLoopGroup workerGroup, AbsAdapter<K, T> target) {
         this.context = context;
         this.currentState = currentState;
         this.workerGroup = workerGroup;
+        this.target = target;
     }
 
     public void become(ProxyState state) {

@@ -12,16 +12,14 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
+public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(ProxyToServerAdapter.class);
 
-    private final AbsAdapter<HttpRequest> client;
     private final InetSocketAddress remoteAddress;
     private final Object connectLock = new Object();
 
-    public ProxyToServerAdapter(ProxyServer context, AbsAdapter<HttpRequest> client, InetSocketAddress remoteAddress) {
-        super(context, ProxyState.DISCONNECTED, client.getWorkerGroup());
-        this.client = client;
+    public ProxyToServerAdapter(ProxyServer context, AbsAdapter<HttpRequest, HttpResponse> target, InetSocketAddress remoteAddress) {
+        super(context, ProxyState.DISCONNECTED, target.getWorkerGroup(), target);
         this.remoteAddress = remoteAddress;
     }
 
@@ -31,7 +29,7 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
         if (is(ProxyState.DISCONNECTED) && msg instanceof HttpRequest msg0) {
             logger.info("Currently disconnected, connect and then write the message");
             connectAndWrite(msg0);
-            return client.getChannel().newSucceededFuture();
+            return getTarget().getChannel().newSucceededFuture();
         }
         if (getCurrentState() == ProxyState.CONNECTING) {
             synchronized (connectLock) {
@@ -49,11 +47,11 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
 
     public void connectAndWrite(HttpRequest initialRequest) {
         logger.info("Starting new connection to: {}", remoteAddress);
-        client.getChannel().config().setAutoRead(false);
+        getTarget().getChannel().config().setAutoRead(false);
         become(ProxyState.CONNECTING);
         new Bootstrap()
             .group(getWorkerGroup())
-            .channel(client.getChannel().getClass())
+            .channel(getTarget().getChannel().getClass())
             .handler(new ChannelInitializer<>() {
                 @Override
                 protected void initChannel(Channel channel) throws Exception {
@@ -65,11 +63,11 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
             .connect(remoteAddress).addListener(f -> {
                 synchronized (connectLock) {
                     if (!f.isSuccess()) {
-                        client.getChannel().close();
+                        getTarget().getChannel().close();
                     }
                     become(ProxyState.AWAITING_INITIAL);
                     write(initialRequest);
-                    client.getChannel().config().setAutoRead(true);
+                    getTarget().getChannel().config().setAutoRead(true);
                     connectLock.notifyAll();
                 }
             });
@@ -78,26 +76,26 @@ public class ProxyToServerAdapter extends AbsAdapter<HttpResponse> {
     @Override
     public ProxyState readHttpInitial(HttpResponse msg) {
         logger.info("Received raw response: {}", msg);
-        client.write(msg);
+        getTarget().write(msg);
         return ProxyState.AWAITING_CHUNK;
     }
 
     @Override
     public void readRaw(ByteBuf msg) {
-        client.write(msg);
+        getTarget().write(msg);
     }
 
     @Override
     public void readHTTPChunk(HttpContent chunk) {
-        client.write(chunk);
+        getTarget().write(chunk);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         try {
             logger.info("Disconnected");
-            if (client.getChannel() != null && client.getChannel().isActive()) {
-                client.getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+            if (getTarget().getChannel() != null && getTarget().getChannel().isActive()) {
+                getTarget().getChannel().writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
             }
         } finally {
             super.channelInactive(ctx);
