@@ -1,2 +1,5 @@
-includeBuild("worker/buildConfig")
-include("worker:core","worker:server")
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") { from(files("./libs.versions.toml")) }
+    }
+}
