@@ -81,6 +81,7 @@ public class DefaultProxyServer implements ProxyServer {
         }
     }
 
+    @Override
     public void stop() {
         doStop(true);
     }

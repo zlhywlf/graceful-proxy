@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.ConstructorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyThreadPoolGroup;
 import zlhywlf.proxy.core.ProxyConfig;
 
@@ -71,7 +72,7 @@ public class ProxyBootstrap {
         this.cmd = cmd;
     }
 
-    public DefaultProxyServer start() {
+    public ProxyServer start() {
         if (cmd.hasOption(helpOption)) {
             HelpFormatter helpFormatter = new HelpFormatter();
             helpFormatter.printHelp("gracefulProxy", options);
@@ -110,7 +111,7 @@ public class ProxyBootstrap {
         return this;
     }
 
-    private DefaultProxyServer doStart() {
+    private ProxyServer doStart() {
         ProxyConfig proxyConfig = createProxyConfig();
         ProxyThreadPoolGroup proxyThreadPoolGroup = Objects.requireNonNullElseGet(this.proxyThreadPoolGroup, () -> {
             int proxyThreadPoolGroupId = DefaultProxyThreadPoolGroup.proxyThreadPoolGroupCount.getAndIncrement();

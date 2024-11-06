@@ -1,4 +1,4 @@
-package zlhywlf.proxy.server.adapter;
+package zlhywlf.proxy.server;
 
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -19,9 +19,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.server.ProxyBootstrap;
-import zlhywlf.proxy.server.DefaultProxyServer;
-import zlhywlf.proxy.server.adapter.models.ResponseInfo;
+import zlhywlf.proxy.core.ProxyServer;
+import zlhywlf.proxy.models.ResponseInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,12 +28,13 @@ import java.util.Objects;
 
 public class SimpleProxyTest {
     private static final Logger logger = LoggerFactory.getLogger(SimpleProxyTest.class);
+
     static CloseableHttpClient httpClientSimple;
     static CloseableHttpClient httpClientProxy;
     static Server webServer;
     static int webServerPort;
     static HttpHost webHost;
-    static DefaultProxyServer proxyServer;
+    static ProxyServer proxyServer;
 
     @BeforeAll
     static void init() {
@@ -69,6 +69,7 @@ public class SimpleProxyTest {
     void compareProxiedAndNoProxiedGet(HttpHost host, String resourceUrl) {
         ResponseInfo noProxied = httpGet(host, resourceUrl, false);
         ResponseInfo proxied = httpGet(host, resourceUrl, true);
+        logger.info(noProxied.toString());
         Assertions.assertEquals(noProxied, proxied);
     }
 
