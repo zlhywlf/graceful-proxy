@@ -72,7 +72,7 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
             }
             case AWAITING_CHUNK -> {
                 HttpContent msg0 = (HttpContent) msg;
-                readHTTPChunk(msg0);
+                readHttpChunk(msg0);
                 nextState = msg instanceof LastHttpContent ? ProxyState.AWAITING_INITIAL : ProxyState.AWAITING_CHUNK;
             }
         }
@@ -85,7 +85,7 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
         getTarget().write(msg);
     }
 
-    public void readHTTPChunk(HttpContent msg) {
+    public void readHttpChunk(HttpContent msg) {
         getTarget().write(msg);
     }
 

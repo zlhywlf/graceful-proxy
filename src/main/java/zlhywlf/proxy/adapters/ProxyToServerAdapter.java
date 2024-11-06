@@ -24,7 +24,6 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
 
     @Override
     public ChannelFuture write(Object msg) {
-        logger.info("Requested write of {}", msg);
         if (is(ProxyState.DISCONNECTED) && msg instanceof HttpRequest msg0) {
             logger.info("Currently disconnected, connect and then write the message");
             connectAndWrite(msg0);
@@ -74,7 +73,6 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
 
     @Override
     public ProxyState readHttpInitial(HttpResponse msg) {
-        logger.info("Received raw response: {}", msg);
         getTarget().write(msg);
         return ProxyState.AWAITING_CHUNK;
     }
