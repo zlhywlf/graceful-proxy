@@ -15,8 +15,8 @@ import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
 
 @Getter
-public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> extends ChannelInboundHandlerAdapter {
-    private static final Logger logger = LoggerFactory.getLogger(AbsAdapter.class);
+public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> extends ChannelInboundHandlerAdapter {
+    private static final Logger logger = LoggerFactory.getLogger(ProxyAdapter.class);
 
     private volatile ProxyState currentState;
     private final ProxyServer context;
@@ -24,13 +24,13 @@ public abstract class AbsAdapter<T extends HttpObject, K extends HttpObject> ext
     private volatile ChannelHandlerContext ctx;
     private volatile long lastReadTime;
     @Setter
-    private volatile AbsAdapter<K, T> target;
+    private volatile ProxyAdapter<K, T> target;
 
-    public AbsAdapter(ProxyServer context, ProxyState currentState) {
+    public ProxyAdapter(ProxyServer context, ProxyState currentState) {
         this(context, currentState, null);
     }
 
-    public AbsAdapter(ProxyServer context, ProxyState currentState, AbsAdapter<K, T> target) {
+    public ProxyAdapter(ProxyServer context, ProxyState currentState, ProxyAdapter<K, T> target) {
         this.context = context;
         this.currentState = currentState;
         this.target = target;

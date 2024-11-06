@@ -12,13 +12,13 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-public class ProxyToServerAdapter extends AbsAdapter<HttpResponse, HttpRequest> {
+public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(ProxyToServerAdapter.class);
 
     private final InetSocketAddress remoteAddress;
     private final Object connectLock = new Object();
 
-    public ProxyToServerAdapter(ProxyServer context, AbsAdapter<HttpRequest, HttpResponse> target, InetSocketAddress remoteAddress) {
+    public ProxyToServerAdapter(ProxyServer context, ProxyAdapter<HttpRequest, HttpResponse> target, InetSocketAddress remoteAddress) {
         super(context, ProxyState.DISCONNECTED, target);
         this.remoteAddress = remoteAddress;
     }

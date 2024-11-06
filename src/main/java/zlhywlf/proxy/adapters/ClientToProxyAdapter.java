@@ -11,7 +11,7 @@ import zlhywlf.proxy.core.ProxyState;
 
 import java.net.InetSocketAddress;
 
-public class ClientToProxyAdapter extends AbsAdapter<HttpRequest, HttpResponse> {
+public class ClientToProxyAdapter extends ProxyAdapter<HttpRequest, HttpResponse> {
     private static final Logger logger = LoggerFactory.getLogger(ClientToProxyAdapter.class);
 
     public ClientToProxyAdapter(ProxyServer context, ChannelPipeline pipeline) {
