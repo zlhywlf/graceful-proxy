@@ -13,13 +13,14 @@ import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
 
 @Getter
+@Setter
 public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> extends BaseAdapter {
     private static final Logger logger = LoggerFactory.getLogger(ProxyAdapter.class);
 
     private volatile ProxyState currentState;
     private volatile long lastReadTime;
-    @Setter
     private volatile ProxyAdapter<K, T> target;
+    private volatile boolean tunneling;
 
     public ProxyAdapter(ProxyServer context, ProxyState currentState) {
         this(context, currentState, null);
@@ -50,10 +51,10 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
     public void read(Object msg) {
         logger.info("Reading: {}", msg);
         lastReadTime = System.currentTimeMillis();
-        if (msg instanceof HttpObject msg0) {
-            readHttp(msg0);
-        } else if (msg instanceof ByteBuf) {
+        if (tunneling || msg instanceof ByteBuf) {
             readRaw((ByteBuf) msg);
+        } else if (msg instanceof HttpObject msg0) {
+            readHttp(msg0);
         } else {
             throw new UnsupportedOperationException("Unsupported message type: " + msg.getClass().getName());
         }

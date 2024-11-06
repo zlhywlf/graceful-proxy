@@ -76,6 +76,7 @@ public abstract class BaseAdapter extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        logger.error("", cause);
         super.exceptionCaught(ctx, cause);
     }
 

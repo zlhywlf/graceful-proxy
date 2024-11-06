@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyState;
+import zlhywlf.proxy.core.ProxyUtils;
 
 import java.net.InetSocketAddress;
 
@@ -53,8 +54,8 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
             .handler(new ChannelInitializer<>() {
                 @Override
                 protected void initChannel(@NonNull Channel channel) {
-                    channel.pipeline().addLast("httpRequestEncoder", new HttpRequestEncoder());
-                    channel.pipeline().addLast("HttpResponseDecoder", new HttpResponseDecoder());
+                    channel.pipeline().addLast("encoder", new HttpRequestEncoder());
+                    channel.pipeline().addLast("decoder", new HttpResponseDecoder());
                     channel.pipeline().addLast("proxyToServerAdapter", ProxyToServerAdapter.this);
                 }
             })
@@ -64,7 +65,19 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
                         getTarget().getChannel().close();
                     }
                     become(ProxyState.AWAITING_INITIAL);
-                    write(initialRequest);
+                    if (ProxyUtils.isCONNECT(initialRequest)) {
+                        getCtx().pipeline().remove("encoder");
+                        getCtx().pipeline().remove("decoder");
+                        setTunneling(true);
+                        logger.info("Responding with CONNECT successful");
+                        FullHttpResponse response = ProxyUtils.createFullHttpResponse(HttpVersion.HTTP_1_1, new HttpResponseStatus(200, "Connection established"));
+                        getTarget().writeToChannel(response);
+                        getTarget().getCtx().pipeline().remove("decoder");
+                        getTarget().getCtx().pipeline().remove("encoder");
+                        getTarget().setTunneling(true);
+                    }else {
+                        write(initialRequest);
+                    }
                     getTarget().getChannel().config().setAutoRead(true);
                     connectLock.notifyAll();
                 }
