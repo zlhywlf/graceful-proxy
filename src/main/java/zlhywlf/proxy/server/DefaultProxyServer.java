@@ -30,12 +30,10 @@ public class DefaultProxyServer implements ProxyServer {
     private final Thread jvmShutdownHook = new Thread(this::stop, "graceful-proxy-stop-hook");
     private volatile InetSocketAddress boundAddress;
     private final ProxyThreadPoolGroup proxyThreadPoolGroup;
-    private final InetSocketAddress requestedAddress;
 
-    public DefaultProxyServer(ProxyConfig config, ProxyThreadPoolGroup proxyThreadPoolGroup, InetSocketAddress requestedAddress) {
+    public DefaultProxyServer(ProxyConfig config, ProxyThreadPoolGroup proxyThreadPoolGroup) {
         this.proxyThreadPoolGroup = proxyThreadPoolGroup;
         this.config = config;
-        this.requestedAddress = requestedAddress;
     }
 
     @Override
@@ -90,7 +88,7 @@ public class DefaultProxyServer implements ProxyServer {
         doStop(false);
     }
 
-    public DefaultProxyServer start() {
+    public ProxyServer bind(InetSocketAddress requestedAddress) {
         if (!isStopped()) {
             proxyThreadPoolGroup.registerProxyServer(this);
             ChannelFuture cf = new ServerBootstrap()

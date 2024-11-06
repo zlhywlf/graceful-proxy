@@ -122,7 +122,7 @@ public class ProxyBootstrap {
             EventLoopGroup proxyToServerPool = ProxyThreadFactory.create(category + "-proxyToServer", eventLoopClassName, 0);
             return new DefaultProxyThreadPoolGroup(proxyThreadPoolGroupId, bossPool, clientToProxyPool, proxyToServerPool);
         });
-        return new DefaultProxyServer(proxyConfig, proxyThreadPoolGroup, determineListenAddress(proxyConfig)).start();
+        return new DefaultProxyServer(proxyConfig, proxyThreadPoolGroup).bind(determineListenAddress(proxyConfig));
     }
 
     private InetSocketAddress determineListenAddress(ProxyConfig proxyConfig) {
