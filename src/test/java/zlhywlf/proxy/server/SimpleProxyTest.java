@@ -6,13 +6,18 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.URIScheme;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.apache.hc.core5.ssl.SSLContexts;
 import org.apache.hc.core5.util.Timeout;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.util.Callback;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,6 +29,9 @@ import zlhywlf.proxy.models.ResponseInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
 public class SimpleProxyTest {
@@ -31,10 +39,12 @@ public class SimpleProxyTest {
 
     static CloseableHttpClient httpClientSimple;
     static CloseableHttpClient httpClientProxy;
+    static ProxyServer proxyServer;
     static Server webServer;
     static int webServerPort;
+    static int httpsWebServerPort;
     static HttpHost webHost;
-    static ProxyServer proxyServer;
+    static HttpHost httpsWebHost;
 
     @BeforeAll
     static void init() {
@@ -45,9 +55,12 @@ public class SimpleProxyTest {
         for (Connector connector : webServer.getConnectors()) {
             if (!Objects.equals(connector.getDefaultConnectionFactory().getProtocol(), "SSL")) {
                 webServerPort = ((ServerConnector) connector).getLocalPort();
+            } else {
+                httpsWebServerPort = ((ServerConnector) connector).getLocalPort();
             }
         }
         webHost = new HttpHost("localhost", webServerPort);
+        httpsWebHost = new HttpHost(URIScheme.HTTPS.id, "localhost", httpsWebServerPort);
     }
 
     @AfterAll
@@ -64,6 +77,11 @@ public class SimpleProxyTest {
     @Test
     void testSimpleGetRequest() {
         compareProxiedAndNoProxiedGet(webHost, "/");
+    }
+
+    @Test
+    void testSimpleGetRequestHttps() {
+        compareProxiedAndNoProxiedGet(httpsWebHost, "/");
     }
 
     void compareProxiedAndNoProxiedGet(HttpHost host, String resourceUrl) {
@@ -84,13 +102,22 @@ public class SimpleProxyTest {
     }
 
     static CloseableHttpClient buildHttpClient(boolean isProxied) {
-        PoolingHttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder
-            .create()
-            .setConnectionConfigResolver(httpRoute -> ConnectionConfig
-                .custom()
-                .setConnectTimeout(Timeout.ofSeconds(5))
-                .build())
-            .build();
+        PoolingHttpClientConnectionManager cm;
+        try {
+            cm = PoolingHttpClientConnectionManagerBuilder
+                .create()
+                .setTlsSocketStrategy(new DefaultClientTlsStrategy(
+                    SSLContexts.custom().loadTrustMaterial((chain, authType) -> true).build(),
+                    NoopHostnameVerifier.INSTANCE
+                ))
+                .setConnectionConfigResolver(httpRoute -> ConnectionConfig
+                    .custom()
+                    .setConnectTimeout(Timeout.ofSeconds(5))
+                    .build())
+                .build();
+        } catch (NoSuchAlgorithmException | KeyManagementException | KeyStoreException e) {
+            throw new RuntimeException(e);
+        }
         HttpClientBuilder builder = HttpClients
             .custom()
             .setConnectionManager(cm);
@@ -103,6 +130,7 @@ public class SimpleProxyTest {
 
     static Server createWebServer() {
         Server server = new Server(0);
+        server.addConnector(getHttpsServerConnector(server));
         server.setHandler(new Handler.Abstract() {
             @Override
             public boolean handle(Request request, Response response, Callback callback) {
@@ -116,5 +144,21 @@ public class SimpleProxyTest {
             throw new RuntimeException(e);
         }
         return server;
+    }
+
+    private static ServerConnector getHttpsServerConnector(Server server) {
+        SslContextFactory.Server ssl = new SslContextFactory.Server();
+        ssl.setKeyStorePath("gracefulProxy.jks");
+        ssl.setKeyStorePassword("gracefulProxy");
+        ssl.setKeyManagerPassword("gracefulProxy");
+        SecureRequestCustomizer secureRequestCustomizer = new SecureRequestCustomizer();
+        secureRequestCustomizer.setSniHostCheck(false);
+        HttpConfiguration httpConfiguration = new HttpConfiguration();
+        httpConfiguration.addCustomizer(secureRequestCustomizer);
+        HttpConnectionFactory httpConnectionFactory = new HttpConnectionFactory(httpConfiguration);
+        ServerConnector serverConnector = new ServerConnector(server, ssl, httpConnectionFactory);
+        serverConnector.setPort(0);
+        serverConnector.setIdleTimeout(0);
+        return serverConnector;
     }
 }
