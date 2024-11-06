@@ -4,8 +4,8 @@ import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import zlhywlf.proxy.core.ProxyServer;
 import zlhywlf.proxy.core.ProxyThreadPoolGroup;
+import zlhywlf.proxy.core.Server;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup {
     private final EventLoopGroup clientToProxyPool;
     private final EventLoopGroup proxyToServerPool;
     private final AtomicBoolean stopped = new AtomicBoolean(false);
-    private final List<ProxyServer> registeredServers = new ArrayList<>(1);
+    private final List<Server> registeredServers = new ArrayList<>(1);
     private final Object SERVER_REGISTRATION_LOCK = new Object();
 
     public DefaultProxyThreadPoolGroup(int proxyThreadPoolGroupId, EventLoopGroup bossPool, EventLoopGroup clientToProxyPool, EventLoopGroup proxyToServerPool) {
@@ -60,16 +60,16 @@ public class DefaultProxyThreadPoolGroup implements ProxyThreadPoolGroup {
     }
 
     @Override
-    public void registerProxyServer(ProxyServer proxyServer) {
+    public void registerProxyServer(Server server) {
         synchronized (SERVER_REGISTRATION_LOCK) {
-            registeredServers.add(proxyServer);
+            registeredServers.add(server);
         }
     }
 
     @Override
-    public void unregisterProxyServer(ProxyServer proxyServer, boolean graceful) {
+    public void unregisterProxyServer(Server server, boolean graceful) {
         synchronized (SERVER_REGISTRATION_LOCK) {
-            boolean wasRegistered = registeredServers.remove(proxyServer);
+            boolean wasRegistered = registeredServers.remove(server);
             if (!wasRegistered) {
                 logger.warn("Attempted to unregister proxy server from thread pool group that it was not registered with. Was the proxy unregistered twice?");
             }

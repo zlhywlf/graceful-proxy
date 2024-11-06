@@ -3,9 +3,9 @@ package zlhywlf.proxy.core;
 import io.netty.channel.EventLoopGroup;
 
 public interface ProxyThreadPoolGroup {
-    void registerProxyServer(ProxyServer proxyServer);
+    void registerProxyServer(Server server);
 
-    void unregisterProxyServer(ProxyServer proxyServer, boolean graceful);
+    void unregisterProxyServer(Server server, boolean graceful);
 
     EventLoopGroup getProxyToServerPool();
 
