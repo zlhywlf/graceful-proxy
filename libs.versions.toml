@@ -18,4 +18,4 @@ httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version
 jetty = { module = "org.eclipse.jetty:jetty-server", version.ref = "jetty" }
 cli = { module = "commons-cli:commons-cli", version.ref = "cli" }
 nettyHttp = { module = "io.netty:netty-codec-http", version.ref = "netty" }
-nettyEpoll = { module = "io.netty:netty-transport-classes-epoll", version.ref = "netty" }
+nettyEpoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
