@@ -66,16 +66,21 @@ public class ProxyToServerAdapter extends ProxyAdapter<HttpResponse, HttpRequest
                     }
                     become(ProxyState.AWAITING_INITIAL);
                     if (ProxyUtils.isCONNECT(initialRequest)) {
+                        if (isRelay()) {
+                            write(initialRequest);
+                        }
                         getCtx().pipeline().remove("encoder");
                         getCtx().pipeline().remove("decoder");
                         setTunneling(true);
-                        logger.info("Responding with CONNECT successful");
-                        FullHttpResponse response = ProxyUtils.createFullHttpResponse(HttpVersion.HTTP_1_1, new HttpResponseStatus(200, "Connection established"));
-                        getTarget().writeToChannel(response);
+                        if (!isRelay()) {
+                            logger.info("Responding with CONNECT successful");
+                            FullHttpResponse response = ProxyUtils.createFullHttpResponse(HttpVersion.HTTP_1_1, new HttpResponseStatus(200, "Connection established"));
+                            getTarget().writeToChannel(response);
+                        }
                         getTarget().getCtx().pipeline().remove("decoder");
                         getTarget().getCtx().pipeline().remove("encoder");
                         getTarget().setTunneling(true);
-                    }else {
+                    } else {
                         write(initialRequest);
                     }
                     getTarget().getChannel().config().setAutoRead(true);

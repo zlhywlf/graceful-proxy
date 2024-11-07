@@ -21,6 +21,7 @@ public abstract class ProxyAdapter<T extends HttpObject, K extends HttpObject> e
     private volatile long lastReadTime;
     private volatile ProxyAdapter<K, T> target;
     private volatile boolean tunneling;
+    private volatile boolean relay;
 
     public ProxyAdapter(ProxyServer context, ProxyState currentState) {
         this(context, currentState, null);
