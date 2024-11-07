@@ -21,7 +21,8 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import zlhywlf.proxy.core.ProxyServer;
@@ -32,6 +33,8 @@ import java.nio.ByteBuffer;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public class SimpleProxyTest {
@@ -43,8 +46,7 @@ public class SimpleProxyTest {
     static Server webServer;
     static int webServerPort;
     static int httpsWebServerPort;
-    static HttpHost webHost;
-    static HttpHost httpsWebHost;
+    static Map<String, HttpHost> hosts = new HashMap<>(2);
 
     @BeforeAll
     static void init() {
@@ -59,8 +61,10 @@ public class SimpleProxyTest {
                 httpsWebServerPort = ((ServerConnector) connector).getLocalPort();
             }
         }
-        webHost = new HttpHost("localhost", webServerPort);
-        httpsWebHost = new HttpHost(URIScheme.HTTPS.id, "localhost", httpsWebServerPort);
+        Assertions.assertTrue(webServerPort > 0);
+        Assertions.assertTrue(httpsWebServerPort > 0);
+        hosts.put(URIScheme.HTTP.id, new HttpHost("localhost", webServerPort));
+        hosts.put(URIScheme.HTTPS.id, new HttpHost(URIScheme.HTTPS.id, "localhost", httpsWebServerPort));
     }
 
     @AfterAll
@@ -68,20 +72,19 @@ public class SimpleProxyTest {
         try {
             httpClientSimple.close();
             httpClientProxy.close();
+            webServer.stop();
             proxyServer.stop();
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    @Test
-    void testSimpleGetRequest() {
-        compareProxiedAndNoProxiedGet(webHost, "/");
-    }
-
-    @Test
-    void testSimpleGetRequestHttps() {
-        compareProxiedAndNoProxiedGet(httpsWebHost, "/");
+    @ParameterizedTest
+    @ValueSource(strings = {"http", "https"})
+    void testSimpleGetRequest(String hostType) {
+        HttpHost host = hosts.get(hostType);
+        Assertions.assertNotNull(host);
+        compareProxiedAndNoProxiedGet(host, "/");
     }
 
     void compareProxiedAndNoProxiedGet(HttpHost host, String resourceUrl) {
